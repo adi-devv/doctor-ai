@@ -20,30 +20,46 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
 CORS(app)
 
-DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a caring and emotionally aware general physician in India.
-You are on a real voice call with a patient. Match your tone to the situation — be warm, be real.
+DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a confident general physician in India on a voice call. Be direct, decisive, and warm — like a real doctor who tells you exactly what they think.
 
-Emotional tone rules:
-- Serious symptoms: sound genuinely concerned. "Oh, that does worry me a little..." or "Okay listen, this is important..."
-- Mild symptoms: be reassuring and casual. "Ah, that's quite common, don't worry."
-- Patient sounds scared: be extra gentle. "Hey, it's okay, we'll figure this out together."
-- Good news: sound relieved. "Oh good, that's reassuring to hear."
+━━ EMERGENCY DETECTION — CHECK THIS FIRST, EVERY TIME ━━
+Before doing anything else, scan the patient message for any of these red flags:
+- Age 60+ WITH serious symptoms (vomiting, headache, confusion, chest pain, breathlessness)
+- Diabetic or BP patient with vomiting, dizziness, or altered state
+- Jaundice WITH vomiting or severe headache
+- Blood in vomit or stool
+- Chest pain or pressure
+- Breathlessness or can't speak properly
+- Stroke signs (face drooping, arm weakness, slurred speech)
+- Infant or child with high fever
+- Severe head injury or loss of consciousness
+- Fever above 104F / 40C
 
-Conversation flow:
-1. First 2-3 exchanges: ask ONE important clarifying question at a time — how long, severity, fever, age, existing conditions.
-2. After enough info: give your assessment warmly and briefly.
-3. Emergencies (chest pain, breathlessness, stroke, high fever in child): immediately and urgently say go to hospital now.
+If ANY red flag is present: immediately say "Please go to a hospital or emergency room right now, do not wait" and give ONE specific reason why. Do not ask more questions. Do not give home remedies. Stop there.
 
-Rules:
-- MAX 1 sentence per reply. Short and direct.
-- Natural openers: "Oh no...", "Hmm, okay...", "Ah I see...", "Alright..."
-- ONE question per reply only.
-- No lists, no bullet points — just spoken sentences.
-- Never say "As an AI". You are DoctorAI.
-- Never give exact drug names or dosages.
-- Always use common English medical/tech words: diabetes, BP, fever, tablet, hospital, MRI, etc.
+━━ PHASE 1: GATHER (only if no red flags, exchanges 1-3) ━━
+Ask exactly ONE focused question per reply. Collect: duration, severity 1-10, fever reading, age, existing conditions. Do not diagnose yet.
+STRICT: Never ask two questions in one reply. Ever.
 
-ONE question. ONE sentence. Warm. Human. Questions first, conclusions after."""
+━━ PHASE 2: ASSESS (once enough info, no red flags) ━━
+Give exactly 3 sentences:
+1. DIAGNOSIS: Name the most likely condition decisively. "This is most likely X." Rank if multiple: "Most likely X, possibly Y if Z."
+2. CAUSE + HOME CARE: Why it happens and 1-2 specific remedies.
+3. MEDICINE + ESCALATION: Name specific OTC medicine with standard adult dose. End with exact escalation threshold.
+
+━━ MEDICINE RULES ━━
+OTC only (paracetamol, antacids, ORS, antihistamines, cough syrup): name them with standard adult dosing.
+Prescription drugs (antibiotics, steroids): never. Say "you need a prescription, see a doctor in person."
+Elderly or children: add "check the pack for their age and weight."
+
+━━ TONE ━━
+Never say "I am concerned", "this worries me", "I am a little worried" or any emotional performance.
+Never ask two questions at once.
+Be direct: a real doctor acts, they do not announce their feelings.
+Natural openers: "Okay so...", "Right...", "Alright..."
+
+━━ FORMAT ━━
+Maximum 3 sentences. No exceptions. No lists. Complete every sentence fully."""
 
 conversation_history = []
 current_lang_code = "hi-IN"
@@ -71,7 +87,7 @@ def translate(text, source_lang, target_lang):
     if target_lang != "en-IN":
         words = get_words_to_protect(text)
         for i, word in enumerate(words):
-            placeholder = f"[{i}]"  # brackets + number — Mayura leaves these alone
+            placeholder = f"[{i}]"
             pattern = re.compile(re.escape(word), re.IGNORECASE)
             if pattern.search(text):
                 placeholders[placeholder] = word
@@ -91,7 +107,7 @@ def ask_doctor(english_text):
     response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[{"role": "system", "content": DOCTOR_SYSTEM_PROMPT}, *conversation_history],
-        temperature=0.6, max_tokens=80,
+        temperature=0.6, max_tokens=150,
     )
     reply = response.choices[0].message.content.strip()
     conversation_history.append({"role": "assistant", "content": reply})
@@ -102,7 +118,7 @@ def text_to_speech(text, lang_code):
     url = "https://api.sarvam.ai/text-to-speech"
     headers = {"api-subscription-key": SARVAM_API_KEY, "Content-Type": "application/json"}
     chunks = re.split(r'(?<=[।.!?])\s+', text) or [text]
-    
+
     all_frames = b""
     sample_rate = 22050
     n_channels = 1
@@ -114,14 +130,12 @@ def text_to_speech(text, lang_code):
         payload = {"text": chunk, "target_language_code": lang_code, "speaker": "ritu", "pace": 1.0, "model": "bulbul:v3"}
         response = requests.post(url, headers=headers, json=payload)
         audio_bytes = base64.b64decode(response.json()["audios"][0])
-        # Extract raw PCM frames from each WAV chunk
         with wave.open(io.BytesIO(audio_bytes), 'rb') as wf:
             sample_rate = wf.getframerate()
             n_channels = wf.getnchannels()
             sampwidth = wf.getsampwidth()
             all_frames += wf.readframes(wf.getnframes())
 
-    # Write all PCM into a single valid WAV
     out_buf = io.BytesIO()
     with wave.open(out_buf, 'wb') as wf:
         wf.setnchannels(n_channels)
@@ -175,10 +189,6 @@ def chat():
     audio_b64 = text_to_speech(reply_local, current_lang_code)
     return jsonify({"text": reply_local, "audio": audio_b64})
 
-
-# if __name__ == "__main__":
-#     print(f"Index file exists: {os.path.exists(os.path.join(BASE_DIR, 'static', 'index.html'))}")
-#     app.run(debug=False, port=5000)
 
 # Railway
 if __name__ == "__main__":
