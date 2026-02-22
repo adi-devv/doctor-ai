@@ -435,6 +435,8 @@ body::before {
   transition:all 0.2s;
   box-shadow:0 0 20px rgba(0,212,255,0.2);
   touch-action:manipulation;
+  user-select:none;
+  -webkit-user-select:none;
 }
 @media (min-width: 640px) {
   .mic-btn { width:60px; height:60px; font-size:24px; }
@@ -463,6 +465,8 @@ body::before {
   transition:all 0.2s;
   flex-shrink:0;
   touch-action:manipulation;
+  user-select:none;
+  -webkit-user-select:none;
 }
 @media (min-width: 640px) {
   .end-btn { width:60px; height:60px; font-size:24px; }
@@ -866,10 +870,7 @@ function endCall() {
   document.querySelectorAll(".lang-pill").forEach(b=>b.classList.remove("active"));
 }
 
-// Prevent double-tap zoom on buttons (iOS Safari)
-document.querySelectorAll("button").forEach(btn => {
-  btn.addEventListener("touchend", e => e.preventDefault());
-});
+
 </script>
 </body>
 </html>
