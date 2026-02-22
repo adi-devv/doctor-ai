@@ -135,8 +135,8 @@ body::before {
   .layout { flex-direction: column; }
 
   .video-area {
-    /* Takes up roughly 58% of remaining height */
-    flex: 0 0 58%;
+    /* 68% for doctor card — more breathing room */
+    flex: 0 0 68%;
     display:flex;
     flex-direction:column;
     padding:10px 10px 0;
@@ -388,6 +388,20 @@ body::before {
 }
 
 /* Language pills */
+.lang-scroll-wrap {
+  position:relative;
+}
+/* Fade-out gradient on right to hint at more content */
+.lang-scroll-wrap::after {
+  content:'';
+  position:absolute;
+  right:0; top:0; bottom:0;
+  width:36px;
+  background:linear-gradient(to right, transparent, rgba(6,10,16,0.95));
+  pointer-events:none;
+  border-radius:0 4px 4px 0;
+}
+
 .lang-scroll {
   display:flex;
   gap:6px;
@@ -395,6 +409,7 @@ body::before {
   scrollbar-width:none;
   justify-content:flex-start;
   padding-bottom:2px;
+  padding-right:30px; /* leave room so last pill isn't hidden behind fade */
 }
 .lang-scroll::-webkit-scrollbar { display:none; }
 
@@ -636,7 +651,9 @@ body::before {
 
       <!-- Controls inside card -->
       <div class="inline-controls">
-        <div class="lang-scroll" id="langScroll"></div>
+        <div class="lang-scroll-wrap">
+          <div class="lang-scroll" id="langScroll"></div>
+        </div>
         <div class="bottom-btns">
           <div class="mic-wrap">
             <button class="mic-btn disabled" id="micBtn" onclick="toggleRecording()">🎙️</button>
@@ -681,6 +698,9 @@ const LANGUAGES = [
 let selectedLang=null, isRecording=false, mediaRecorder=null, audioChunks=[];
 let state="idle", timerInterval=null, seconds=0;
 let silenceTimer=null, maxTimer=null, audioCtx=null, analyser=null;
+// Abort controller + session token to kill stale language switches
+let langAbortController=null, currentSession=0;
+let currentAudio=null; // track playing audio so we can stop it
 
 // Build language pills
 const langScroll = document.getElementById("langScroll");
@@ -712,13 +732,14 @@ function showCaption(text, hidden=false) {
   box.className="caption-box"+(hidden?" hidden":"");
 }
 function startTimer() {
-  seconds=0;
+  if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
+  const startTime = Date.now();
   document.getElementById("recDot").style.display="block";
   document.getElementById("timer").style.display="inline";
   timerInterval=setInterval(()=>{
-    seconds++;
-    const m=String(Math.floor(seconds/60)).padStart(2,"0");
-    const s=String(seconds%60).padStart(2,"0");
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const m=String(Math.floor(elapsed/60)).padStart(2,"0");
+    const s=String(elapsed%60).padStart(2,"0");
     document.getElementById("timer").textContent=`${m}:${s}`;
   },1000);
 }
@@ -739,29 +760,93 @@ function addThinking() {
   msg.innerHTML=`<div class="cmsg-label">DoctorAI</div><div class="thinking-dots"><span></span><span></span><span></span></div>`;
   c.appendChild(msg); c.scrollTop=c.scrollHeight;
 }
-async function playAudio(b64) {
+async function playAudio(b64, session) {
   if(!b64) return;
+  // Bail if a newer language session has started
+  if(session !== undefined && session !== currentSession) return;
   setDoctorSpeaking(true);
   const audio=new Audio("data:audio/wav;base64,"+b64);
-  await new Promise(resolve=>{ audio.onended=resolve; audio.onerror=resolve; audio.play().catch(resolve); });
+  currentAudio=audio;
+  await new Promise(resolve=>{
+    audio.onended=resolve;
+    audio.onerror=resolve;
+    audio.play().catch(resolve);
+  });
+  currentAudio=null;
+  // Only clean up if still our session
+  if(session === undefined || session === currentSession) {
+    setDoctorSpeaking(false);
+    showCaption("",true);
+  }
+}
+
+function abortCurrentSession() {
+  // Abort any in-flight fetch
+  if(langAbortController) { langAbortController.abort(); langAbortController=null; }
+  // Stop any playing audio immediately
+  if(currentAudio) { currentAudio.pause(); currentAudio.src=""; currentAudio=null; }
+  // Stop recording if active
+  if(isRecording) {
+    isRecording=false;
+    clearInterval(silenceTimer); silenceTimer=null;
+    clearTimeout(maxTimer); maxTimer=null;
+    if(audioCtx){ audioCtx.close(); audioCtx=null; }
+    try { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(t=>t.stop()); } catch(e){}
+    setUserSpeaking(false);
+  }
+  // Stop timer
+  if(timerInterval){ clearInterval(timerInterval); timerInterval=null; }
   setDoctorSpeaking(false);
   showCaption("",true);
+  state="idle";
+  // Bump session so any stale async callbacks know to bail
+  currentSession++;
 }
 
 async function selectLanguage(lang, btn) {
+  // Kill everything in progress
+  abortCurrentSession();
+  const mySession = currentSession;
+
   document.querySelectorAll(".lang-pill").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
   selectedLang=lang;
+
   document.getElementById("micBtn").classList.add("disabled");
   document.getElementById("micHint").textContent="Connecting...";
   document.getElementById("callStatus").textContent="Connecting...";
   document.getElementById("callStatus").style.color="var(--accent)";
+
+  // Clear conversation
+  const c=document.getElementById("convoMessages");
+  c.innerHTML='';
   addThinking();
-  const res=await fetch("/set_language",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lang_code:lang.code})});
-  const data=await res.json();
+
+  langAbortController = new AbortController();
+  let data;
+  try {
+    const res=await fetch("/set_language",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({lang_code:lang.code}),
+      signal:langAbortController.signal
+    });
+    data=await res.json();
+  } catch(e) {
+    // Aborted — another language was selected, just stop here
+    return;
+  }
+  langAbortController=null;
+
+  // Bail if user already switched to another language
+  if(mySession !== currentSession) return;
+
   addConvoMsg("doctor",data.text);
   showCaption(data.text);
-  await playAudio(data.audio);
+  await playAudio(data.audio, mySession);
+
+  if(mySession !== currentSession) return;
+
   document.getElementById("callStatus").textContent=`${lang.name} • Connected`;
   document.getElementById("callStatus").style.color="var(--green)";
   document.getElementById("micBtn").classList.remove("disabled");
@@ -866,15 +951,13 @@ async function toggleRecording() {
 }
 
 function endCall() {
-  if(timerInterval) clearInterval(timerInterval);
+  abortCurrentSession();
   document.getElementById("recDot").style.display="none";
   document.getElementById("timer").style.display="none";
   document.getElementById("callStatus").textContent="Call ended";
   document.getElementById("callStatus").style.color="var(--muted)";
   document.getElementById("micBtn").classList.add("disabled");
   document.getElementById("micHint").textContent="—";
-  setDoctorSpeaking(false); setUserSpeaking(false);
-  showCaption("",true);
   selectedLang=null;
   document.querySelectorAll(".lang-pill").forEach(b=>b.classList.remove("active"));
 }
