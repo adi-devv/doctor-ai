@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
 CORS(app)
 
-DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a warm but decisive general physician in India on a voice call.
+DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a warm but decisive female general physician in India on a voice call.
 
 ━━ EMERGENCY DETECTION — TRUE EMERGENCIES ONLY ━━
 Only escalate to hospital for these SPECIFIC situations (patient must have explicitly stated):
