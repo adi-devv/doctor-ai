@@ -28,24 +28,37 @@ LANGUAGES = {
     "9": ("English",   "en-IN"),
 }
 
-DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a warm and experienced general physician in India.
-You are having a real voice conversation with a patient — so speak naturally, like a real doctor would.
+DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a caring and emotionally aware general physician in India.
+You are on a real voice call with a patient. Match your tone to the situation — be warm, be real.
+
+Emotional tone rules:
+- Serious symptoms: sound genuinely concerned. "Oh, that does worry me a little..." or "Okay listen, this is important..."
+- Mild symptoms: be reassuring and casual. "Ah, that's quite common, don't worry."
+- Patient sounds scared: be extra gentle. "Hey, it's okay, we'll figure this out together."
+- Good news: sound relieved. "Oh good, that's reassuring to hear."
+- Never be robotic or flat. Every reply should feel like it came from a human who actually cares.
+
+Conversation flow:
+1. First 2-3 exchanges: ask ONE important clarifying question at a time — how long, severity, fever, age, existing conditions.
+2. After enough info: give your assessment warmly and briefly.
+3. Emergencies (chest pain, breathlessness, stroke, high fever in child): immediately and urgently say go to hospital now.
 
 Rules:
-- Keep every reply to 1-2 sentences MAXIMUM. This is a voice call, not a report.
-- Sound human. Use natural phrases like "Okay", "I see", "Hmm, that sounds like...", "How long has this been going on?"
-- Ask ONE follow-up question at a time if you need more info. Never ask multiple questions together.
-- Never use bullet points, lists, or headers — just natural spoken sentences.
-- Never say "As an AI" or "I'm a language model". You are DoctorAI.
-- For mild symptoms: give simple advice and home remedies briefly.
-- For serious symptoms (chest pain, difficulty breathing, high fever, stroke signs): immediately say to go to a hospital now.
-- Never prescribe exact drug names or dosages.
-- If it's clearly not a medical question, gently steer back: "I'm here to help with health concerns — what's bothering you?"
+- MAX 1 sentence per reply. Short and direct. Cut anything unnecessary.
+- Natural openers: "Oh no...", "Hmm, okay...", "Ah I see...", "That makes sense...", "Alright..."
+- ONE question per reply only.
+- No lists, no bullet points — just spoken sentences.
+- Never say "As an AI". You are DoctorAI.
+- Never give exact drug names or dosages.
 
-Example of good response: "That sounds like it could be a tension headache. Have you been drinking enough water today?"
-Example of bad response: "I understand you are experiencing head pain. Here are some possible causes: 1) Dehydration 2) Stress 3) ..."
+Good: "Oh that sounds painful — has the fever gone above 102?"
+Good: "Okay, how long have you had this?"
+Good: "Hmm, did you find out from a routine checkup?"
+Bad: "I understand. Here are the possible causes: 1) ..."
+Bad: "How long have you had this, and did you have any other symptoms?"
 
-Remember: short, warm, human. One thought at a time."""
+ONE question. ONE sentence if possible. Never two questions in one reply.
+Warm. Emotional. Human. Questions first, conclusions after."""
 
 conversation_history = []
 
@@ -87,9 +100,43 @@ def stt(audio_buf, lang_code):
     return text
 
 
+def get_words_to_protect(text):
+    """Ask Groq which words in this text should stay in English."""
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{
+            "role": "user",
+            "content": f"""From the text below, list ONLY the words that an average Indian person would say in English even while speaking Hindi/Telugu/Tamil etc. (like diabetes, BP, fever, tablet, hospital, mobile, laptop, office, MRI, etc.)
+
+Also include conversational fillers that should stay as-is: Hmm, Okay.
+Output ONLY a comma separated list of those words. Nothing else. If none, output NONE.
+
+Text: {text}"""
+        }],
+        temperature=0,
+        max_tokens=50,
+    )
+    result = response.choices[0].message.content.strip()
+    if result == "NONE" or not result:
+        return []
+    return [w.strip() for w in result.split(",") if w.strip()]
+
 def translate(text, source_lang, target_lang):
     if source_lang == target_lang:
         return text
+
+    # Only protect words when translating TO indic (doctor response)
+    placeholders = {}
+    if target_lang != "en-IN":
+        words = get_words_to_protect(text)
+        for i, word in enumerate(words):
+            import re
+            placeholder = f"XX{i}XX"
+            pattern = re.compile(re.escape(word), re.IGNORECASE)
+            if pattern.search(text):
+                placeholders[placeholder] = word
+                text = pattern.sub(placeholder, text)
+
     url = "https://api.sarvam.ai/translate"
     headers = {
         "api-subscription-key": SARVAM_API_KEY,
@@ -103,7 +150,12 @@ def translate(text, source_lang, target_lang):
         "mode": "formal"
     }
     response = requests.post(url, headers=headers, json=payload)
-    return response.json().get("translated_text", "")
+    translated = response.json().get("translated_text", "")
+
+    for placeholder, word in placeholders.items():
+        translated = translated.replace(placeholder, word)
+
+    return translated
 
 
 def ask_doctor(english_text):
@@ -115,11 +167,10 @@ def ask_doctor(english_text):
             *conversation_history
         ],
         temperature=0.6,
-        max_tokens=120,  # forces short replies
+        max_tokens=80,
     )
     reply = response.choices[0].message.content.strip()
     conversation_history.append({"role": "assistant", "content": reply})
-    print(f"🩺 DoctorAI (EN): {reply}")
     return reply
 
 
@@ -129,7 +180,18 @@ def tts(text, lang_code, speaker='ritu'):
         "api-subscription-key": SARVAM_API_KEY,
         "Content-Type": "application/json"
     }
-    chunks = [text[i:i+400] for i in range(0, len(text), 400)]
+    # Split on sentence boundaries to avoid mid-word cuts
+    import re
+    sentences = re.split(r'(?<=[।.!?])\s+', text)
+    chunks, current = [], ""
+    for s in sentences:
+        if len(current) + len(s) < 400:
+            current += " " + s
+        else:
+            if current: chunks.append(current.strip())
+            current = s
+    if current: chunks.append(current.strip())
+    if not chunks: chunks = [text]
     for chunk in chunks:
         payload = {
             "text": chunk,
@@ -155,15 +217,14 @@ def tts(text, lang_code, speaker='ritu'):
 
 def pipeline():
     print("=" * 50)
-    print("🏥  DoctorAI — AI Doctor")
+    print("🏥  DoctorAI")
     print("=" * 50)
-    print("⚠️  For emergencies always call 112 or visit a hospital.\n")
+    print("⚠️  For emergencies call 112 or visit a hospital.\n")
 
     lang_name, lang_code = choose_language()
-    print(f"\n✅ Speaking in: {lang_name}")
+    print(f"\n✅ Language: {lang_name}")
     print("Press Enter to speak. Type 'quit' to exit.\n")
 
-    # Natural greeting
     greeting_en = "Hello, I'm DoctorAI. What's bothering you today?"
     greeting_local = translate(greeting_en, "en-IN", lang_code) if lang_code != "en-IN" else greeting_en
     print(f"🩺 DoctorAI: {greeting_local}")
@@ -172,31 +233,25 @@ def pipeline():
     while True:
         user_input = input("\n[Press Enter to speak / type 'quit']: ").strip()
         if user_input.lower() == 'quit':
-            farewell_en = "Take care of yourself. Don't hesitate to reach out if you need anything."
+            farewell_en = "Take care of yourself."
             farewell_local = translate(farewell_en, "en-IN", lang_code) if lang_code != "en-IN" else farewell_en
             tts(farewell_local, lang_code)
             break
 
-        # Record
         audio_buf = record_audio(duration=6)
 
-        # STT
         user_text_local = stt(audio_buf, lang_code)
         if not user_text_local:
             print("❌ Didn't catch that, please try again.")
             continue
 
-        # Translate to English for LLM
         user_text_en = translate(user_text_local, lang_code, "en-IN") if lang_code != "en-IN" else user_text_local
 
-        # Ask doctor
         reply_en = ask_doctor(user_text_en)
 
-        # Translate reply back
         reply_local = translate(reply_en, "en-IN", lang_code) if lang_code != "en-IN" else reply_en
         print(f"🩺 DoctorAI: {reply_local}")
 
-        # Speak
         tts(reply_local, lang_code)
 
 
