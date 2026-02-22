@@ -198,6 +198,12 @@ body::before {
   flex-direction:column;
   align-items:center;
   gap:12px;
+  transform:translateY(-10%);
+}
+@media (max-width: 639px) {
+  .doctor-figure {
+    transform:translateY(-22%);
+  }
 }
 
 /* Rings */
@@ -317,7 +323,7 @@ body::before {
   justify-content:center;
 }
 @media (max-width: 639px) {
-  .caption-box { bottom:120px; font-size:12px; padding:7px 13px; max-width:88%; }
+  .caption-box { bottom:108px; font-size:11px; padding:6px 12px; max-width:80%; min-height:34px; }
 }
 .caption-box.hidden { opacity:0; pointer-events:none; }
 
@@ -376,6 +382,9 @@ body::before {
 }
 @media (min-width: 640px) {
   .inline-controls { padding:24px 20px 24px; gap:16px; }
+}
+@media (max-width: 639px) {
+  .inline-controls { padding:10px 12px 10px; gap:7px; }
 }
 
 /* Language pills */
