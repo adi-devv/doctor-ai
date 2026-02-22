@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>DoctorAI</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
 :root {
   --bg: #060a10;
@@ -20,14 +20,18 @@
   --danger: #ff4466;
 }
 
-body {
+html, body {
   font-family: 'Outfit', sans-serif;
   background: var(--bg);
   color: var(--text);
-  height: 100vh;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 /* Scanline overlay */
@@ -40,7 +44,6 @@ body::before {
   z-index:100;
 }
 
-/* Ambient glow */
 .glow-bg {
   position:fixed;
   top:0; left:0; right:0; bottom:0;
@@ -51,15 +54,16 @@ body::before {
   z-index:0;
 }
 
-/* Top bar */
+/* ─── TOP BAR ─── */
 .topbar {
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:14px 24px;
+  padding:12px 16px;
   border-bottom:1px solid var(--border);
-  background:rgba(6,10,16,0.9);
+  background:rgba(6,10,16,0.95);
   backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
   position:relative;
   z-index:10;
   flex-shrink:0;
@@ -67,59 +71,92 @@ body::before {
 
 .logo {
   font-family:'Syne',sans-serif;
-  font-size:18px;
+  font-size:17px;
   font-weight:800;
   letter-spacing:-0.5px;
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:6px;
 }
-
 .logo-dot { color:var(--accent); }
 
 .call-info {
   display:flex;
   align-items:center;
-  gap:8px;
-  font-size:12px;
+  gap:6px;
+  font-size:11px;
   color:var(--muted);
 }
 
 .rec-dot {
-  width:8px; height:8px;
+  width:7px; height:7px;
   background:var(--danger);
   border-radius:50%;
   animation: blink 1.2s ease-in-out infinite;
 }
-
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
-.timer { font-family:monospace; color:var(--text); font-size:13px; }
+.timer { font-family:monospace; color:var(--text); font-size:12px; }
 
-/* Main layout */
+/* ─── LAYOUT: DESKTOP vs MOBILE ─── */
 .layout {
   flex:1;
   display:flex;
-  gap:0;
   overflow:hidden;
   position:relative;
   z-index:1;
+  min-height:0;
 }
 
-/* Video call area */
-.video-area {
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  padding:16px;
-  position:relative;
+/* Desktop: side-by-side */
+@media (min-width: 640px) {
+  .layout { flex-direction: row; }
+
+  .video-area {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding:16px;
+  }
+
+  .convo-panel {
+    width:300px;
+    flex-shrink:0;
+    border-left:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    background:rgba(6,10,16,0.6);
+    backdrop-filter:blur(8px);
+  }
 }
 
-/* Doctor main card */
+/* Mobile: stacked — video top, convo bottom */
+@media (max-width: 639px) {
+  .layout { flex-direction: column; }
+
+  .video-area {
+    /* Takes up roughly 58% of remaining height */
+    flex: 0 0 58%;
+    display:flex;
+    flex-direction:column;
+    padding:10px 10px 0;
+    min-height:0;
+  }
+
+  .convo-panel {
+    flex:1;
+    border-top:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    background:rgba(6,10,16,0.85);
+    min-height:0;
+  }
+}
+
+/* ─── DOCTOR CARD ─── */
 .doctor-card {
   flex:1;
-  border-radius:20px;
+  border-radius:18px;
   background:var(--card);
   border:1px solid var(--border);
   position:relative;
@@ -127,9 +164,9 @@ body::before {
   display:flex;
   align-items:center;
   justify-content:center;
+  min-height:0;
 }
 
-/* Animated mesh background inside doctor card */
 .doctor-card::before {
   content:'';
   position:absolute;
@@ -139,13 +176,11 @@ body::before {
     radial-gradient(ellipse 60% 80% at 20% 80%, rgba(0,212,255,0.06) 0%, transparent 50%);
   animation: meshMove 8s ease-in-out infinite alternate;
 }
-
 @keyframes meshMove {
   from { opacity:0.6; transform:scale(1); }
   to { opacity:1; transform:scale(1.05); }
 }
 
-/* Grid pattern */
 .doctor-card::after {
   content:'';
   position:absolute;
@@ -162,13 +197,11 @@ body::before {
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:20px;
+  gap:12px;
 }
 
-/* SVG avatar */
-.avatar-wrap {
-  position:relative;
-}
+/* Rings */
+.avatar-wrap { position:relative; }
 
 .avatar-rings {
   position:absolute;
@@ -182,7 +215,6 @@ body::before {
   border:1px solid rgba(0,212,255,0.15);
   animation:ringPulse 3s ease-in-out infinite;
 }
-
 .ring:nth-child(1) { inset:0; animation-delay:0s; }
 .ring:nth-child(2) { inset:-12px; animation-delay:0.5s; }
 .ring:nth-child(3) { inset:-24px; animation-delay:1s; }
@@ -192,45 +224,38 @@ body::before {
   0%,100% { opacity:0.3; transform:scale(1); }
   50% { opacity:0.8; transform:scale(1.02); }
 }
-
-.ring.active {
-  border-color:rgba(0,212,255,0.4);
-  animation:ringPulseActive 0.6s ease-in-out infinite;
-}
-
+.ring.active { border-color:rgba(0,212,255,0.4); animation:ringPulseActive 0.6s ease-in-out infinite; }
 @keyframes ringPulseActive {
   0%,100% { opacity:0.6; transform:scale(1); }
   50% { opacity:1; transform:scale(1.04); }
 }
 
-/* Doctor SVG silhouette */
+/* Doctor SVG — smaller on mobile */
 .doctor-svg {
-  width:140px;
-  height:140px;
+  width:110px;
+  height:110px;
   position:relative;
   z-index:2;
 }
-
-.doctor-circle-bg {
-  fill: rgba(0,102,255,0.15);
-  stroke: rgba(0,212,255,0.3);
-  stroke-width:1.5;
+@media (min-width: 640px) {
+  .doctor-svg { width:140px; height:140px; }
 }
 
+.doctor-circle-bg { fill: rgba(0,102,255,0.15); stroke: rgba(0,212,255,0.3); stroke-width:1.5; }
 .doctor-body { fill: rgba(0,212,255,0.12); stroke:rgba(0,212,255,0.4); stroke-width:1.5; }
 .doctor-head { fill: rgba(0,212,255,0.2); stroke:rgba(0,212,255,0.5); stroke-width:1.5; }
 .doctor-cross { fill:rgba(0,212,255,0.8); }
 
 .doctor-name-tag {
   position:absolute;
-  top:12px;
+  top:10px;
   left:50%;
   transform:translateX(-50%);
   background:rgba(0,212,255,0.1);
   border:1px solid rgba(0,212,255,0.3);
   border-radius:100px;
-  padding:4px 14px;
-  font-size:11px;
+  padding:3px 12px;
+  font-size:10px;
   color:var(--accent);
   font-weight:500;
   letter-spacing:1px;
@@ -238,14 +263,13 @@ body::before {
   z-index:10;
 }
 
-/* Speaking waveform below avatar */
+/* Speaking wave */
 .doctor-wave {
   display:flex;
   align-items:center;
   gap:3px;
-  height:30px;
+  height:24px;
 }
-
 .dwave-bar {
   width:3px;
   background:linear-gradient(to top, var(--accent2), var(--accent));
@@ -254,11 +278,7 @@ body::before {
   opacity:0.3;
   transition:height 0.1s, opacity 0.1s;
 }
-
-.dwave-bar.active {
-  opacity:1;
-}
-
+.dwave-bar.active { opacity:1; }
 .dwave-bar.active:nth-child(7n+1) { animation:dw1 0.5s ease-in-out infinite; }
 .dwave-bar.active:nth-child(7n+2) { animation:dw2 0.7s ease-in-out infinite 0.1s; }
 .dwave-bar.active:nth-child(7n+3) { animation:dw3 0.4s ease-in-out infinite 0.05s; }
@@ -266,156 +286,246 @@ body::before {
 .dwave-bar.active:nth-child(7n+5) { animation:dw5 0.8s ease-in-out infinite 0.2s; }
 .dwave-bar.active:nth-child(7n+6) { animation:dw1 0.5s ease-in-out infinite 0.3s; }
 .dwave-bar.active:nth-child(7n+7) { animation:dw3 0.6s ease-in-out infinite 0.1s; }
-
 @keyframes dw1 { 0%,100%{height:4px} 50%{height:22px} }
 @keyframes dw2 { 0%,100%{height:6px} 50%{height:28px} }
 @keyframes dw3 { 0%,100%{height:3px} 50%{height:18px} }
 @keyframes dw4 { 0%,100%{height:8px} 50%{height:30px} }
 @keyframes dw5 { 0%,100%{height:5px} 50%{height:14px} }
 
-/* Subtitle / caption */
+/* Caption */
 .caption-box {
   position:absolute;
-  bottom:170px;
+  bottom:145px;
   left:50%;
   transform:translateX(-50%);
-  background:rgba(6,10,16,0.85);
+  background:rgba(6,10,16,0.88);
   backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
   border:1px solid var(--border);
   border-radius:12px;
-  padding:10px 20px;
-  max-width:80%;
+  padding:8px 16px;
+  max-width:85%;
   text-align:center;
-  font-size:14px;
+  font-size:13px;
   line-height:1.5;
   color:var(--text);
   z-index:10;
   transition:opacity 0.3s;
-  min-height:44px;
+  min-height:40px;
   display:flex;
   align-items:center;
   justify-content:center;
 }
+@media (max-width: 639px) {
+  .caption-box { bottom:120px; font-size:12px; padding:7px 13px; max-width:88%; }
+}
+.caption-box.hidden { opacity:0; pointer-events:none; }
 
-.caption-box.hidden { opacity:0; }
-
-/* User small card (bottom-right like PiP) */
+/* User PiP */
 .user-pip {
   position:absolute;
-  bottom:16px;
-  right:16px;
-  width:120px;
-  height:90px;
+  bottom:12px;
+  right:12px;
+  width:90px;
+  height:70px;
   background:var(--card);
   border:1px solid var(--border);
-  border-radius:14px;
+  border-radius:12px;
   overflow:hidden;
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:6px;
+  gap:4px;
   z-index:10;
+}
+@media (min-width: 640px) {
+  .user-pip { width:120px; height:90px; bottom:16px; right:16px; }
 }
 
 .user-pip-avatar {
-  width:36px;
-  height:36px;
+  width:30px; height:30px;
   border-radius:50%;
   background:linear-gradient(135deg, rgba(0,102,255,0.3), rgba(0,212,255,0.1));
   border:1px solid rgba(0,212,255,0.2);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:18px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px;
+}
+@media (min-width: 640px) {
+  .user-pip-avatar { width:36px; height:36px; font-size:18px; }
 }
 
-.user-pip-label {
-  font-size:10px;
-  color:var(--muted);
-  letter-spacing:0.5px;
-}
+.user-pip-label { font-size:9px; color:var(--muted); letter-spacing:0.5px; }
 
-.user-pip-wave {
-  display:flex;
-  gap:2px;
-  align-items:center;
-  height:14px;
-}
-
-.upwave {
-  width:2px;
-  height:3px;
-  background:var(--accent);
-  border-radius:1px;
-  opacity:0.3;
-}
-
+.user-pip-wave { display:flex; gap:2px; align-items:center; height:12px; }
+.upwave { width:2px; height:3px; background:var(--accent); border-radius:1px; opacity:0.3; }
 .upwave.active:nth-child(odd) { animation:dw3 0.5s ease-in-out infinite; opacity:1; }
 .upwave.active:nth-child(even) { animation:dw1 0.7s ease-in-out infinite 0.1s; opacity:1; }
 
-/* Right panel — conversation */
-.convo-panel {
-  width:300px;
-  flex-shrink:0;
-  border-left:1px solid var(--border);
+/* ─── INLINE CONTROLS ─── */
+.inline-controls {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  padding:16px 14px 14px;
   display:flex;
   flex-direction:column;
-  background:rgba(6,10,16,0.6);
-  backdrop-filter:blur(8px);
+  gap:10px;
+  background:linear-gradient(to top, rgba(6,10,16,0.98) 0%, rgba(6,10,16,0.7) 60%, transparent 100%);
+  z-index:10;
+  border-radius:0 0 18px 18px;
+}
+@media (min-width: 640px) {
+  .inline-controls { padding:24px 20px 24px; gap:16px; }
 }
 
+/* Language pills */
+.lang-scroll {
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  justify-content:flex-start;
+  padding-bottom:2px;
+}
+.lang-scroll::-webkit-scrollbar { display:none; }
+
+.lang-pill {
+  flex-shrink:0;
+  padding:5px 13px;
+  border-radius:100px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--muted);
+  font-family:'Outfit',sans-serif;
+  font-size:12px;
+  cursor:pointer;
+  transition:all 0.2s;
+  white-space:nowrap;
+  /* Bigger tap target on mobile */
+  min-height:34px;
+  display:flex;
+  align-items:center;
+}
+.lang-pill:hover { border-color:var(--accent); color:var(--text); }
+.lang-pill.active {
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border-color:transparent;
+  color:white;
+  font-weight:600;
+}
+
+/* Bottom buttons */
+.bottom-btns {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:20px;
+}
+
+.mic-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0; }
+
+.mic-btn {
+  width:56px; height:56px;
+  border-radius:50%;
+  border:none;
+  background:linear-gradient(135deg, var(--accent2), var(--accent));
+  cursor:pointer;
+  font-size:22px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.2s;
+  box-shadow:0 0 20px rgba(0,212,255,0.2);
+  touch-action:manipulation;
+}
+@media (min-width: 640px) {
+  .mic-btn { width:60px; height:60px; font-size:24px; }
+}
+.mic-btn:active:not(.disabled) { transform:scale(0.95); }
+.mic-btn.recording { background:linear-gradient(135deg,var(--danger),#ff6600); animation:micPulse 1.2s ease-in-out infinite; }
+.mic-btn.disabled { opacity:0.35; cursor:not-allowed; }
+
+@keyframes micPulse {
+  0%{box-shadow:0 0 0 0 rgba(255,68,102,0.5)}
+  70%{box-shadow:0 0 0 18px rgba(255,68,102,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,68,102,0)}
+}
+
+.mic-hint { font-size:10px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; }
+
+.end-btn {
+  width:56px; height:56px;
+  border-radius:50%;
+  border:1px solid rgba(255,68,102,0.3);
+  background:rgba(255,68,102,0.15);
+  color:var(--danger);
+  font-size:22px;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.2s;
+  flex-shrink:0;
+  touch-action:manipulation;
+}
+@media (min-width: 640px) {
+  .end-btn { width:60px; height:60px; font-size:24px; }
+}
+.end-btn:active { background:rgba(255,68,102,0.25); }
+
+.end-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
+
+/* ─── CONVERSATION PANEL ─── */
 .convo-header {
-  padding:14px 16px;
+  padding:10px 14px;
   border-bottom:1px solid var(--border);
-  font-size:11px;
+  font-size:10px;
   color:var(--muted);
   letter-spacing:1px;
   text-transform:uppercase;
   font-weight:500;
+  flex-shrink:0;
 }
 
 .convo-messages {
   flex:1;
   overflow-y:auto;
-  padding:12px;
+  padding:10px;
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:8px;
   scrollbar-width:thin;
   scrollbar-color:var(--border) transparent;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
 }
-
 .convo-messages::-webkit-scrollbar { width:3px; }
 .convo-messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* Mobile: slightly denser input area below messages */
+.convo-input-area {
+  display:none; /* hidden on desktop — controls are in video area */
+}
 
 .cmsg {
   display:flex;
   flex-direction:column;
-  gap:3px;
+  gap:2px;
   animation:fadeUp 0.3s ease;
 }
-
 @keyframes fadeUp {
   from{opacity:0;transform:translateY(6px)}
   to{opacity:1;transform:translateY(0)}
 }
-
 .cmsg.user { align-items:flex-end; }
 
-.cmsg-label {
-  font-size:10px;
-  color:var(--muted);
-  letter-spacing:0.5px;
-  text-transform:uppercase;
-}
+.cmsg-label { font-size:9px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; }
 
 .cmsg-bubble {
-  padding:8px 12px;
+  padding:7px 11px;
   border-radius:12px;
-  font-size:12.5px;
+  font-size:12px;
   line-height:1.5;
-  max-width:240px;
+  max-width:88%;
+}
+@media (min-width: 640px) {
+  .cmsg-bubble { font-size:12.5px; max-width:240px; padding:8px 12px; }
 }
 
 .cmsg.doctor .cmsg-bubble {
@@ -424,7 +534,6 @@ body::before {
   border-top-left-radius:3px;
   color:var(--text);
 }
-
 .cmsg.user .cmsg-bubble {
   background:rgba(0,102,255,0.2);
   border:1px solid rgba(0,102,255,0.3);
@@ -435,16 +544,15 @@ body::before {
 .thinking-dots {
   display:flex;
   gap:4px;
-  padding:8px 12px;
+  padding:7px 11px;
   background:rgba(0,212,255,0.07);
   border:1px solid rgba(0,212,255,0.15);
   border-radius:12px;
   border-top-left-radius:3px;
   width:fit-content;
 }
-
 .thinking-dots span {
-  width:6px; height:6px;
+  width:5px; height:5px;
   background:var(--muted);
   border-radius:50%;
   animation:think 1.2s ease-in-out infinite;
@@ -453,107 +561,13 @@ body::before {
 .thinking-dots span:nth-child(3){animation-delay:0.4s}
 @keyframes think{0%,100%{opacity:0.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
 
-
-
-/* Language pills */
-.lang-scroll {
-  display:flex;
-  gap:6px;
-  overflow-x:auto;
-  scrollbar-width:none;
-  justify-content:center;
-  flex-wrap:wrap;
-}
-.lang-scroll::-webkit-scrollbar{display:none}
-
-.lang-pill {
-  flex-shrink:0;
-  padding:5px 14px;
-  border-radius:100px;
-  border:1px solid var(--border);
-  background:transparent;
+/* ─── MOBILE: show convo-empty as smaller placeholder ─── */
+.convo-empty {
+  text-align:center;
   color:var(--muted);
-  font-family:'Outfit',sans-serif;
   font-size:12px;
-  cursor:pointer;
-  transition:all 0.2s;
-  white-space:nowrap;
-}
-.lang-pill:hover{border-color:var(--accent);color:var(--text)}
-.lang-pill.active{
-  background:linear-gradient(135deg,var(--accent2),var(--accent));
-  border-color:transparent;
-  color:white;
-  font-weight:600;
-}
-
-/* Mic button */
-.mic-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0; }
-
-.mic-btn {
-  width:60px; height:60px;
-  border-radius:50%;
-  border:none;
-  background:linear-gradient(135deg, var(--accent2), var(--accent));
-  cursor:pointer;
-  font-size:24px;
-  display:flex; align-items:center; justify-content:center;
-  transition:all 0.2s;
-  box-shadow:0 0 20px rgba(0,212,255,0.2);
-}
-
-.mic-btn:hover:not(.disabled){transform:scale(1.08);box-shadow:0 0 30px rgba(0,212,255,0.4);}
-.mic-btn.recording{background:linear-gradient(135deg,var(--danger),#ff6600);animation:micPulse 1.2s ease-in-out infinite;}
-.mic-btn.disabled{opacity:0.35;cursor:not-allowed;}
-
-@keyframes micPulse{
-  0%{box-shadow:0 0 0 0 rgba(255,68,102,0.5)}
-  70%{box-shadow:0 0 0 18px rgba(255,68,102,0)}
-  100%{box-shadow:0 0 0 0 rgba(255,68,102,0)}
-}
-
-.mic-hint{font-size:10px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;}
-
-/* End call button */
-.end-btn {
-  width:60px;height:60px;
-  border-radius:50%;
-  border:1px solid rgba(255,68,102,0.3);
-  background:rgba(255,68,102,0.15);
-  color:var(--danger);
-  font-size:24px;
-  cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  transition:all 0.2s;
-  flex-shrink:0;
-}
-.end-btn:hover{background:rgba(255,68,102,0.2);}
-
-/* Inline controls inside video area */
-.inline-controls {
-  position:absolute;
-  bottom:0; left:0; right:0;
-  padding:24px 20px 24px;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-  background:linear-gradient(to top, rgba(6,10,16,0.98) 0%, rgba(6,10,16,0.7) 60%, transparent 100%);
-  z-index:10;
-  border-radius:0 0 20px 20px;
-}
-
-.bottom-btns {
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:24px;
-}
-
-.end-wrap {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
+  margin-top:20px;
+  line-height:1.8;
 }
 </style>
 </head>
@@ -566,9 +580,9 @@ body::before {
   <div class="call-info">
     <div class="rec-dot" id="recDot" style="display:none"></div>
     <span class="timer" id="timer" style="display:none">00:00</span>
-    <span id="callStatus" style="font-size:12px;color:var(--muted)">Select a language to connect</span>
+    <span id="callStatus" style="font-size:11px;color:var(--muted)">Select a language</span>
   </div>
-  <div style="width:80px"></div>
+  <div style="width:60px"></div>
 </div>
 
 <!-- Main layout -->
@@ -576,8 +590,6 @@ body::before {
 
   <!-- Video area -->
   <div class="video-area">
-
-    <!-- Doctor main card -->
     <div class="doctor-card">
 
       <!-- Doctor figure -->
@@ -590,39 +602,26 @@ body::before {
             <div class="ring" id="r4"></div>
           </div>
           <svg class="doctor-svg" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
-            <!-- Outer circle -->
             <circle cx="70" cy="70" r="68" class="doctor-circle-bg"/>
-            <!-- Body -->
             <ellipse cx="70" cy="105" rx="30" ry="22" class="doctor-body"/>
-            <!-- Coat collar -->
             <path d="M55 88 L70 100 L85 88 L80 82 L70 90 L60 82 Z" class="doctor-body"/>
-            <!-- Head -->
             <circle cx="70" cy="58" r="22" class="doctor-head"/>
-            <!-- Stethoscope -->
             <path d="M58 80 Q52 90 56 96 Q60 102 66 100" fill="none" stroke="rgba(0,212,255,0.6)" stroke-width="2" stroke-linecap="round"/>
             <circle cx="66" cy="101" r="3" fill="rgba(0,212,255,0.6)"/>
-            <!-- Cross on chest -->
             <rect x="67" y="92" width="6" height="14" rx="2" class="doctor-cross"/>
             <rect x="63" y="96" width="14" height="6" rx="2" class="doctor-cross"/>
-            <!-- Eyes -->
             <ellipse cx="63" cy="57" rx="3" ry="3.5" fill="rgba(0,212,255,0.7)"/>
             <ellipse cx="77" cy="57" rx="3" ry="3.5" fill="rgba(0,212,255,0.7)"/>
-            <!-- Smile -->
             <path d="M63 66 Q70 72 77 66" fill="none" stroke="rgba(0,212,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </div>
-
-        <!-- Doctor wave bars (speaking indicator) -->
         <div class="doctor-wave" id="doctorWave"></div>
       </div>
 
-      <!-- Caption / subtitle -->
       <div class="caption-box hidden" id="captionBox"></div>
-
-      <!-- Name tag -->
       <div class="doctor-name-tag">DoctorAI • ONLINE</div>
 
-      <!-- Controls inside video -->
+      <!-- Controls inside card -->
       <div class="inline-controls">
         <div class="lang-scroll" id="langScroll"></div>
         <div class="bottom-btns">
@@ -651,15 +650,13 @@ body::before {
   <div class="convo-panel">
     <div class="convo-header">Conversation</div>
     <div class="convo-messages" id="convoMessages">
-      <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:40px;line-height:1.8;">
+      <div class="convo-empty">
         Select a language<br/>to begin your consultation
       </div>
     </div>
   </div>
 
 </div>
-
-<!-- Bottom controls moved inside video area via CSS -->
 
 <script>
 const LANGUAGES = [
@@ -672,7 +669,7 @@ let selectedLang=null, isRecording=false, mediaRecorder=null, audioChunks=[];
 let state="idle", timerInterval=null, seconds=0;
 let silenceTimer=null, maxTimer=null, audioCtx=null, analyser=null;
 
-// Build UI
+// Build language pills
 const langScroll = document.getElementById("langScroll");
 LANGUAGES.forEach(lang => {
   const btn = document.createElement("button");
@@ -682,6 +679,7 @@ LANGUAGES.forEach(lang => {
   langScroll.appendChild(btn);
 });
 
+// Build wave bars
 const doctorWave = document.getElementById("doctorWave");
 for(let i=0;i<20;i++){ const b=document.createElement("div"); b.className="dwave-bar"; doctorWave.appendChild(b); }
 
@@ -695,7 +693,7 @@ function setDoctorSpeaking(on) {
 function setUserSpeaking(on) {
   document.querySelectorAll(".upwave").forEach(b=>b.className="upwave"+(on?" active":""));
 }
-function showCaption(text,hidden=false) {
+function showCaption(text, hidden=false) {
   const box=document.getElementById("captionBox");
   box.textContent=text;
   box.className="caption-box"+(hidden?" hidden":"");
@@ -713,7 +711,7 @@ function startTimer() {
 }
 function addConvoMsg(role,text) {
   const c=document.getElementById("convoMessages");
-  const p=c.querySelector("div[style]"); if(p) p.remove();
+  const p=c.querySelector(".convo-empty"); if(p) p.remove();
   const t=document.getElementById("thinkingMsg"); if(t) t.remove();
   const msg=document.createElement("div");
   msg.className=`cmsg ${role}`;
@@ -732,12 +730,12 @@ async function playAudio(b64) {
   if(!b64) return;
   setDoctorSpeaking(true);
   const audio=new Audio("data:audio/wav;base64,"+b64);
-  await new Promise(resolve=>{ audio.onended=resolve; audio.onerror=resolve; audio.play(); });
+  await new Promise(resolve=>{ audio.onended=resolve; audio.onerror=resolve; audio.play().catch(resolve); });
   setDoctorSpeaking(false);
   showCaption("",true);
 }
 
-async function selectLanguage(lang,btn) {
+async function selectLanguage(lang, btn) {
   document.querySelectorAll(".lang-pill").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
   selectedLang=lang;
@@ -805,10 +803,15 @@ async function toggleRecording() {
   if(!selectedLang||state==="thinking"||state==="speaking") return;
 
   if(!isRecording) {
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    let stream;
+    try {
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    } catch(e) {
+      showCaption("Microphone access denied");
+      return;
+    }
 
-    // Silence detection via Web Audio API
-    audioCtx=new AudioContext();
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     analyser=audioCtx.createAnalyser();
     analyser.fftSize=512;
     audioCtx.createMediaStreamSource(stream).connect(analyser);
@@ -820,14 +823,20 @@ async function toggleRecording() {
       let sum=0;
       for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
       const rms=Math.sqrt(sum/data.length)*100;
-      if(rms>8) lastSound=Date.now();  // sound detected
-      else if(Date.now()-lastSound>2500) stopRecording();  // 2.5s silence = stop
+      if(rms>8) lastSound=Date.now();
+      else if(Date.now()-lastSound>2500) stopRecording();
     },150);
 
-    // Hard max 10s
     maxTimer=setTimeout(()=>stopRecording(),10000);
 
-    mediaRecorder=new MediaRecorder(stream);
+    // Prefer opus if available (better on mobile), fallback to wav
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+      ? 'audio/webm'
+      : 'audio/wav';
+
+    mediaRecorder=new MediaRecorder(stream, {mimeType});
     audioChunks=[];
     mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
     mediaRecorder.onstop=()=>processAudio();
@@ -838,7 +847,6 @@ async function toggleRecording() {
     document.getElementById("micBtn").textContent="⏹️";
     document.getElementById("micHint").textContent="Tap to stop";
     showCaption("Listening...");
-
   } else {
     stopRecording();
   }
@@ -857,6 +865,11 @@ function endCall() {
   selectedLang=null;
   document.querySelectorAll(".lang-pill").forEach(b=>b.classList.remove("active"));
 }
+
+// Prevent double-tap zoom on buttons (iOS Safari)
+document.querySelectorAll("button").forEach(btn => {
+  btn.addEventListener("touchend", e => e.preventDefault());
+});
 </script>
 </body>
 </html>
