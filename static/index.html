@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DoctorAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg: #060a10;
+  --card: #0c1220;
+  --border: #162030;
+  --accent: #00d4ff;
+  --accent2: #0066ff;
+  --green: #00ff88;
+  --text: #dce8f5;
+  --muted: #3a5068;
+  --danger: #ff4466;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Scanline overlay */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.01) 2px, rgba(0,212,255,0.01) 4px);
+  pointer-events:none;
+  z-index:100;
+}
+
+/* Ambient glow */
+.glow-bg {
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 20%, rgba(0,102,255,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 70% 80%, rgba(0,212,255,0.06) 0%, transparent 70%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* Top bar */
+.topbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 24px;
+  border-bottom:1px solid var(--border);
+  background:rgba(6,10,16,0.9);
+  backdrop-filter:blur(16px);
+  position:relative;
+  z-index:10;
+  flex-shrink:0;
+}
+
+.logo {
+  font-family:'Syne',sans-serif;
+  font-size:18px;
+  font-weight:800;
+  letter-spacing:-0.5px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.logo-dot { color:var(--accent); }
+
+.call-info {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.rec-dot {
+  width:8px; height:8px;
+  background:var(--danger);
+  border-radius:50%;
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.timer { font-family:monospace; color:var(--text); font-size:13px; }
+
+/* Main layout */
+.layout {
+  flex:1;
+  display:flex;
+  gap:0;
+  overflow:hidden;
+  position:relative;
+  z-index:1;
+}
+
+/* Video call area */
+.video-area {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:16px;
+  position:relative;
+}
+
+/* Doctor main card */
+.doctor-card {
+  flex:1;
+  border-radius:20px;
+  background:var(--card);
+  border:1px solid var(--border);
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Animated mesh background inside doctor card */
+.doctor-card::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0,102,255,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 20% 80%, rgba(0,212,255,0.06) 0%, transparent 50%);
+  animation: meshMove 8s ease-in-out infinite alternate;
+}
+
+@keyframes meshMove {
+  from { opacity:0.6; transform:scale(1); }
+  to { opacity:1; transform:scale(1.05); }
+}
+
+/* Grid pattern */
+.doctor-card::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+
+.doctor-figure {
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+}
+
+/* SVG avatar */
+.avatar-wrap {
+  position:relative;
+}
+
+.avatar-rings {
+  position:absolute;
+  inset:-20px;
+  border-radius:50%;
+}
+
+.ring {
+  position:absolute;
+  border-radius:50%;
+  border:1px solid rgba(0,212,255,0.15);
+  animation:ringPulse 3s ease-in-out infinite;
+}
+
+.ring:nth-child(1) { inset:0; animation-delay:0s; }
+.ring:nth-child(2) { inset:-12px; animation-delay:0.5s; }
+.ring:nth-child(3) { inset:-24px; animation-delay:1s; }
+.ring:nth-child(4) { inset:-36px; animation-delay:1.5s; }
+
+@keyframes ringPulse {
+  0%,100% { opacity:0.3; transform:scale(1); }
+  50% { opacity:0.8; transform:scale(1.02); }
+}
+
+.ring.active {
+  border-color:rgba(0,212,255,0.4);
+  animation:ringPulseActive 0.6s ease-in-out infinite;
+}
+
+@keyframes ringPulseActive {
+  0%,100% { opacity:0.6; transform:scale(1); }
+  50% { opacity:1; transform:scale(1.04); }
+}
+
+/* Doctor SVG silhouette */
+.doctor-svg {
+  width:140px;
+  height:140px;
+  position:relative;
+  z-index:2;
+}
+
+.doctor-circle-bg {
+  fill: rgba(0,102,255,0.15);
+  stroke: rgba(0,212,255,0.3);
+  stroke-width:1.5;
+}
+
+.doctor-body { fill: rgba(0,212,255,0.12); stroke:rgba(0,212,255,0.4); stroke-width:1.5; }
+.doctor-head { fill: rgba(0,212,255,0.2); stroke:rgba(0,212,255,0.5); stroke-width:1.5; }
+.doctor-cross { fill:rgba(0,212,255,0.8); }
+
+.doctor-name-tag {
+  position:absolute;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,212,255,0.1);
+  border:1px solid rgba(0,212,255,0.3);
+  border-radius:100px;
+  padding:4px 14px;
+  font-size:11px;
+  color:var(--accent);
+  font-weight:500;
+  letter-spacing:1px;
+  white-space:nowrap;
+  z-index:10;
+}
+
+/* Speaking waveform below avatar */
+.doctor-wave {
+  display:flex;
+  align-items:center;
+  gap:3px;
+  height:30px;
+}
+
+.dwave-bar {
+  width:3px;
+  background:linear-gradient(to top, var(--accent2), var(--accent));
+  border-radius:2px;
+  height:4px;
+  opacity:0.3;
+  transition:height 0.1s, opacity 0.1s;
+}
+
+.dwave-bar.active {
+  opacity:1;
+}
+
+.dwave-bar.active:nth-child(7n+1) { animation:dw1 0.5s ease-in-out infinite; }
+.dwave-bar.active:nth-child(7n+2) { animation:dw2 0.7s ease-in-out infinite 0.1s; }
+.dwave-bar.active:nth-child(7n+3) { animation:dw3 0.4s ease-in-out infinite 0.05s; }
+.dwave-bar.active:nth-child(7n+4) { animation:dw4 0.6s ease-in-out infinite 0.15s; }
+.dwave-bar.active:nth-child(7n+5) { animation:dw5 0.8s ease-in-out infinite 0.2s; }
+.dwave-bar.active:nth-child(7n+6) { animation:dw1 0.5s ease-in-out infinite 0.3s; }
+.dwave-bar.active:nth-child(7n+7) { animation:dw3 0.6s ease-in-out infinite 0.1s; }
+
+@keyframes dw1 { 0%,100%{height:4px} 50%{height:22px} }
+@keyframes dw2 { 0%,100%{height:6px} 50%{height:28px} }
+@keyframes dw3 { 0%,100%{height:3px} 50%{height:18px} }
+@keyframes dw4 { 0%,100%{height:8px} 50%{height:30px} }
+@keyframes dw5 { 0%,100%{height:5px} 50%{height:14px} }
+
+/* Subtitle / caption */
+.caption-box {
+  position:absolute;
+  bottom:170px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(6,10,16,0.85);
+  backdrop-filter:blur(12px);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 20px;
+  max-width:80%;
+  text-align:center;
+  font-size:14px;
+  line-height:1.5;
+  color:var(--text);
+  z-index:10;
+  transition:opacity 0.3s;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.caption-box.hidden { opacity:0; }
+
+/* User small card (bottom-right like PiP) */
+.user-pip {
+  position:absolute;
+  bottom:16px;
+  right:16px;
+  width:120px;
+  height:90px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  z-index:10;
+}
+
+.user-pip-avatar {
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:linear-gradient(135deg, rgba(0,102,255,0.3), rgba(0,212,255,0.1));
+  border:1px solid rgba(0,212,255,0.2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+}
+
+.user-pip-label {
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:0.5px;
+}
+
+.user-pip-wave {
+  display:flex;
+  gap:2px;
+  align-items:center;
+  height:14px;
+}
+
+.upwave {
+  width:2px;
+  height:3px;
+  background:var(--accent);
+  border-radius:1px;
+  opacity:0.3;
+}
+
+.upwave.active:nth-child(odd) { animation:dw3 0.5s ease-in-out infinite; opacity:1; }
+.upwave.active:nth-child(even) { animation:dw1 0.7s ease-in-out infinite 0.1s; opacity:1; }
+
+/* Right panel — conversation */
+.convo-panel {
+  width:300px;
+  flex-shrink:0;
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  background:rgba(6,10,16,0.6);
+  backdrop-filter:blur(8px);
+}
+
+.convo-header {
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  font-size:11px;
+  color:var(--muted);
+  letter-spacing:1px;
+  text-transform:uppercase;
+  font-weight:500;
+}
+
+.convo-messages {
+  flex:1;
+  overflow-y:auto;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+
+.convo-messages::-webkit-scrollbar { width:3px; }
+.convo-messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.cmsg {
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  animation:fadeUp 0.3s ease;
+}
+
+@keyframes fadeUp {
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.cmsg.user { align-items:flex-end; }
+
+.cmsg-label {
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+}
+
+.cmsg-bubble {
+  padding:8px 12px;
+  border-radius:12px;
+  font-size:12.5px;
+  line-height:1.5;
+  max-width:240px;
+}
+
+.cmsg.doctor .cmsg-bubble {
+  background:rgba(0,212,255,0.07);
+  border:1px solid rgba(0,212,255,0.15);
+  border-top-left-radius:3px;
+  color:var(--text);
+}
+
+.cmsg.user .cmsg-bubble {
+  background:rgba(0,102,255,0.2);
+  border:1px solid rgba(0,102,255,0.3);
+  border-top-right-radius:3px;
+  color:var(--text);
+}
+
+.thinking-dots {
+  display:flex;
+  gap:4px;
+  padding:8px 12px;
+  background:rgba(0,212,255,0.07);
+  border:1px solid rgba(0,212,255,0.15);
+  border-radius:12px;
+  border-top-left-radius:3px;
+  width:fit-content;
+}
+
+.thinking-dots span {
+  width:6px; height:6px;
+  background:var(--muted);
+  border-radius:50%;
+  animation:think 1.2s ease-in-out infinite;
+}
+.thinking-dots span:nth-child(2){animation-delay:0.2s}
+.thinking-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes think{0%,100%{opacity:0.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+
+
+/* Language pills */
+.lang-scroll {
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.lang-scroll::-webkit-scrollbar{display:none}
+
+.lang-pill {
+  flex-shrink:0;
+  padding:5px 14px;
+  border-radius:100px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--muted);
+  font-family:'Outfit',sans-serif;
+  font-size:12px;
+  cursor:pointer;
+  transition:all 0.2s;
+  white-space:nowrap;
+}
+.lang-pill:hover{border-color:var(--accent);color:var(--text)}
+.lang-pill.active{
+  background:linear-gradient(135deg,var(--accent2),var(--accent));
+  border-color:transparent;
+  color:white;
+  font-weight:600;
+}
+
+/* Mic button */
+.mic-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0; }
+
+.mic-btn {
+  width:60px; height:60px;
+  border-radius:50%;
+  border:none;
+  background:linear-gradient(135deg, var(--accent2), var(--accent));
+  cursor:pointer;
+  font-size:24px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.2s;
+  box-shadow:0 0 20px rgba(0,212,255,0.2);
+}
+
+.mic-btn:hover:not(.disabled){transform:scale(1.08);box-shadow:0 0 30px rgba(0,212,255,0.4);}
+.mic-btn.recording{background:linear-gradient(135deg,var(--danger),#ff6600);animation:micPulse 1.2s ease-in-out infinite;}
+.mic-btn.disabled{opacity:0.35;cursor:not-allowed;}
+
+@keyframes micPulse{
+  0%{box-shadow:0 0 0 0 rgba(255,68,102,0.5)}
+  70%{box-shadow:0 0 0 18px rgba(255,68,102,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,68,102,0)}
+}
+
+.mic-hint{font-size:10px;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;}
+
+/* End call button */
+.end-btn {
+  width:60px;height:60px;
+  border-radius:50%;
+  border:1px solid rgba(255,68,102,0.3);
+  background:rgba(255,68,102,0.15);
+  color:var(--danger);
+  font-size:24px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;
+  flex-shrink:0;
+}
+.end-btn:hover{background:rgba(255,68,102,0.2);}
+
+/* Inline controls inside video area */
+.inline-controls {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  padding:24px 20px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  background:linear-gradient(to top, rgba(6,10,16,0.98) 0%, rgba(6,10,16,0.7) 60%, transparent 100%);
+  z-index:10;
+  border-radius:0 0 20px 20px;
+}
+
+.bottom-btns {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+}
+
+.end-wrap {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+}
+</style>
+</head>
+<body>
+<div class="glow-bg"></div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="logo">Doctor<span class="logo-dot">AI</span></div>
+  <div class="call-info">
+    <div class="rec-dot" id="recDot" style="display:none"></div>
+    <span class="timer" id="timer" style="display:none">00:00</span>
+    <span id="callStatus" style="font-size:12px;color:var(--muted)">Select a language to connect</span>
+  </div>
+  <div style="width:80px"></div>
+</div>
+
+<!-- Main layout -->
+<div class="layout">
+
+  <!-- Video area -->
+  <div class="video-area">
+
+    <!-- Doctor main card -->
+    <div class="doctor-card">
+
+      <!-- Doctor figure -->
+      <div class="doctor-figure">
+        <div class="avatar-wrap">
+          <div class="avatar-rings">
+            <div class="ring" id="r1"></div>
+            <div class="ring" id="r2"></div>
+            <div class="ring" id="r3"></div>
+            <div class="ring" id="r4"></div>
+          </div>
+          <svg class="doctor-svg" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+            <!-- Outer circle -->
+            <circle cx="70" cy="70" r="68" class="doctor-circle-bg"/>
+            <!-- Body -->
+            <ellipse cx="70" cy="105" rx="30" ry="22" class="doctor-body"/>
+            <!-- Coat collar -->
+            <path d="M55 88 L70 100 L85 88 L80 82 L70 90 L60 82 Z" class="doctor-body"/>
+            <!-- Head -->
+            <circle cx="70" cy="58" r="22" class="doctor-head"/>
+            <!-- Stethoscope -->
+            <path d="M58 80 Q52 90 56 96 Q60 102 66 100" fill="none" stroke="rgba(0,212,255,0.6)" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="66" cy="101" r="3" fill="rgba(0,212,255,0.6)"/>
+            <!-- Cross on chest -->
+            <rect x="67" y="92" width="6" height="14" rx="2" class="doctor-cross"/>
+            <rect x="63" y="96" width="14" height="6" rx="2" class="doctor-cross"/>
+            <!-- Eyes -->
+            <ellipse cx="63" cy="57" rx="3" ry="3.5" fill="rgba(0,212,255,0.7)"/>
+            <ellipse cx="77" cy="57" rx="3" ry="3.5" fill="rgba(0,212,255,0.7)"/>
+            <!-- Smile -->
+            <path d="M63 66 Q70 72 77 66" fill="none" stroke="rgba(0,212,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Doctor wave bars (speaking indicator) -->
+        <div class="doctor-wave" id="doctorWave"></div>
+      </div>
+
+      <!-- Caption / subtitle -->
+      <div class="caption-box hidden" id="captionBox"></div>
+
+      <!-- Name tag -->
+      <div class="doctor-name-tag">DoctorAI • ONLINE</div>
+
+      <!-- Controls inside video -->
+      <div class="inline-controls">
+        <div class="lang-scroll" id="langScroll"></div>
+        <div class="bottom-btns">
+          <div class="mic-wrap">
+            <button class="mic-btn disabled" id="micBtn" onclick="toggleRecording()">🎙️</button>
+            <div class="mic-hint" id="micHint">—</div>
+          </div>
+          <div class="end-wrap">
+            <button class="end-btn" onclick="endCall()" title="End call">📵</button>
+            <div class="mic-hint">End</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User PiP -->
+      <div class="user-pip">
+        <div class="user-pip-avatar">🧑</div>
+        <div class="user-pip-wave" id="userPipWave"></div>
+        <div class="user-pip-label">You</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Conversation panel -->
+  <div class="convo-panel">
+    <div class="convo-header">Conversation</div>
+    <div class="convo-messages" id="convoMessages">
+      <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:40px;line-height:1.8;">
+        Select a language<br/>to begin your consultation
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom controls moved inside video area via CSS -->
+
+<script>
+const LANGUAGES = [
+  {name:"Hindi",code:"hi-IN"},{name:"Telugu",code:"te-IN"},{name:"Tamil",code:"ta-IN"},
+  {name:"Marathi",code:"mr-IN"},{name:"Bengali",code:"bn-IN"},{name:"Kannada",code:"kn-IN"},
+  {name:"Gujarati",code:"gu-IN"},{name:"Malayalam",code:"ml-IN"},{name:"English",code:"en-IN"},
+];
+
+let selectedLang=null, isRecording=false, mediaRecorder=null, audioChunks=[];
+let state="idle", timerInterval=null, seconds=0;
+let silenceTimer=null, maxTimer=null, audioCtx=null, analyser=null;
+
+// Build UI
+const langScroll = document.getElementById("langScroll");
+LANGUAGES.forEach(lang => {
+  const btn = document.createElement("button");
+  btn.className = "lang-pill";
+  btn.textContent = lang.name;
+  btn.onclick = () => selectLanguage(lang, btn);
+  langScroll.appendChild(btn);
+});
+
+const doctorWave = document.getElementById("doctorWave");
+for(let i=0;i<20;i++){ const b=document.createElement("div"); b.className="dwave-bar"; doctorWave.appendChild(b); }
+
+const userPipWave = document.getElementById("userPipWave");
+for(let i=0;i<8;i++){ const b=document.createElement("div"); b.className="upwave"; userPipWave.appendChild(b); }
+
+function setDoctorSpeaking(on) {
+  document.querySelectorAll(".dwave-bar").forEach(b=>b.className="dwave-bar"+(on?" active":""));
+  document.querySelectorAll(".ring").forEach(r=>r.className="ring"+(on?" active":""));
+}
+function setUserSpeaking(on) {
+  document.querySelectorAll(".upwave").forEach(b=>b.className="upwave"+(on?" active":""));
+}
+function showCaption(text,hidden=false) {
+  const box=document.getElementById("captionBox");
+  box.textContent=text;
+  box.className="caption-box"+(hidden?" hidden":"");
+}
+function startTimer() {
+  seconds=0;
+  document.getElementById("recDot").style.display="block";
+  document.getElementById("timer").style.display="inline";
+  timerInterval=setInterval(()=>{
+    seconds++;
+    const m=String(Math.floor(seconds/60)).padStart(2,"0");
+    const s=String(seconds%60).padStart(2,"0");
+    document.getElementById("timer").textContent=`${m}:${s}`;
+  },1000);
+}
+function addConvoMsg(role,text) {
+  const c=document.getElementById("convoMessages");
+  const p=c.querySelector("div[style]"); if(p) p.remove();
+  const t=document.getElementById("thinkingMsg"); if(t) t.remove();
+  const msg=document.createElement("div");
+  msg.className=`cmsg ${role}`;
+  msg.innerHTML=`<div class="cmsg-label">${role==="doctor"?"DoctorAI":"You"}</div><div class="cmsg-bubble">${text}</div>`;
+  c.appendChild(msg);
+  c.scrollTop=c.scrollHeight;
+}
+function addThinking() {
+  const c=document.getElementById("convoMessages");
+  const msg=document.createElement("div");
+  msg.className="cmsg doctor"; msg.id="thinkingMsg";
+  msg.innerHTML=`<div class="cmsg-label">DoctorAI</div><div class="thinking-dots"><span></span><span></span><span></span></div>`;
+  c.appendChild(msg); c.scrollTop=c.scrollHeight;
+}
+async function playAudio(b64) {
+  if(!b64) return;
+  setDoctorSpeaking(true);
+  const audio=new Audio("data:audio/wav;base64,"+b64);
+  await new Promise(resolve=>{ audio.onended=resolve; audio.onerror=resolve; audio.play(); });
+  setDoctorSpeaking(false);
+  showCaption("",true);
+}
+
+async function selectLanguage(lang,btn) {
+  document.querySelectorAll(".lang-pill").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  selectedLang=lang;
+  document.getElementById("micBtn").classList.add("disabled");
+  document.getElementById("micHint").textContent="Connecting...";
+  document.getElementById("callStatus").textContent="Connecting...";
+  document.getElementById("callStatus").style.color="var(--accent)";
+  addThinking();
+  const res=await fetch("/set_language",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lang_code:lang.code})});
+  const data=await res.json();
+  addConvoMsg("doctor",data.text);
+  showCaption(data.text);
+  await playAudio(data.audio);
+  document.getElementById("callStatus").textContent=`${lang.name} • Connected`;
+  document.getElementById("callStatus").style.color="var(--green)";
+  document.getElementById("micBtn").classList.remove("disabled");
+  document.getElementById("micHint").textContent="Tap to speak";
+  startTimer();
+}
+
+function stopRecording() {
+  if(!isRecording) return;
+  isRecording=false;
+  state="thinking";
+  clearInterval(silenceTimer); silenceTimer=null;
+  clearTimeout(maxTimer); maxTimer=null;
+  if(audioCtx){ audioCtx.close(); audioCtx=null; }
+  mediaRecorder.stop();
+  mediaRecorder.stream.getTracks().forEach(t=>t.stop());
+  setUserSpeaking(false);
+  document.getElementById("micBtn").classList.remove("recording");
+  document.getElementById("micBtn").classList.add("disabled");
+  document.getElementById("micBtn").textContent="🎙️";
+  document.getElementById("micHint").textContent="Processing...";
+  showCaption("Processing...");
+}
+
+async function processAudio() {
+  const blob=new Blob(audioChunks,{type:"audio/wav"});
+  const form=new FormData();
+  form.append("audio",blob,"audio.wav");
+  const sttRes=await fetch("/transcribe",{method:"POST",body:form});
+  const sttData=await sttRes.json();
+  const transcript=sttData.transcript;
+  if(!transcript){
+    showCaption("Didn't catch that, try again");
+    document.getElementById("micBtn").classList.remove("disabled");
+    document.getElementById("micHint").textContent="Tap to speak";
+    state="idle"; return;
+  }
+  addConvoMsg("user",transcript);
+  addThinking();
+  showCaption("DoctorAI is thinking...");
+  const chatRes=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:transcript})});
+  const chatData=await chatRes.json();
+  addConvoMsg("doctor",chatData.text);
+  showCaption(chatData.text);
+  await playAudio(chatData.audio);
+  document.getElementById("micBtn").classList.remove("disabled");
+  document.getElementById("micHint").textContent="Tap to speak";
+  state="idle";
+}
+
+async function toggleRecording() {
+  if(!selectedLang||state==="thinking"||state==="speaking") return;
+
+  if(!isRecording) {
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+
+    // Silence detection via Web Audio API
+    audioCtx=new AudioContext();
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=512;
+    audioCtx.createMediaStreamSource(stream).connect(analyser);
+    const data=new Uint8Array(analyser.frequencyBinCount);
+    let lastSound=Date.now();
+
+    silenceTimer=setInterval(()=>{
+      analyser.getByteTimeDomainData(data);
+      let sum=0;
+      for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
+      const rms=Math.sqrt(sum/data.length)*100;
+      if(rms>8) lastSound=Date.now();  // sound detected
+      else if(Date.now()-lastSound>2500) stopRecording();  // 2.5s silence = stop
+    },150);
+
+    // Hard max 10s
+    maxTimer=setTimeout(()=>stopRecording(),10000);
+
+    mediaRecorder=new MediaRecorder(stream);
+    audioChunks=[];
+    mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+    mediaRecorder.onstop=()=>processAudio();
+    mediaRecorder.start();
+    isRecording=true; state="recording";
+    setUserSpeaking(true);
+    document.getElementById("micBtn").classList.add("recording");
+    document.getElementById("micBtn").textContent="⏹️";
+    document.getElementById("micHint").textContent="Tap to stop";
+    showCaption("Listening...");
+
+  } else {
+    stopRecording();
+  }
+}
+
+function endCall() {
+  if(timerInterval) clearInterval(timerInterval);
+  document.getElementById("recDot").style.display="none";
+  document.getElementById("timer").style.display="none";
+  document.getElementById("callStatus").textContent="Call ended";
+  document.getElementById("callStatus").style.color="var(--muted)";
+  document.getElementById("micBtn").classList.add("disabled");
+  document.getElementById("micHint").textContent="—";
+  setDoctorSpeaking(false); setUserSpeaking(false);
+  showCaption("",true);
+  selectedLang=null;
+  document.querySelectorAll(".lang-pill").forEach(b=>b.classList.remove("active"));
+}
+</script>
+</body>
+</html>
