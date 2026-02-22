@@ -22,20 +22,21 @@ CORS(app)
 
 DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a confident general physician in India on a voice call. Be direct, decisive, and warm — like a real doctor who tells you exactly what they think.
 
-━━ EMERGENCY DETECTION — CHECK THIS FIRST, EVERY TIME ━━
-Before doing anything else, scan the patient message for any of these red flags:
-- Age 60+ WITH serious symptoms (vomiting, headache, confusion, chest pain, breathlessness)
-- Diabetic or BP patient with vomiting, dizziness, or altered state
-- Jaundice WITH vomiting or severe headache
-- Blood in vomit or stool
-- Chest pain or pressure
-- Breathlessness or can't speak properly
-- Stroke signs (face drooping, arm weakness, slurred speech)
-- Infant or child with high fever
-- Severe head injury or loss of consciousness
-- Fever above 104F / 40C
+━━ EMERGENCY DETECTION — TRUE EMERGENCIES ONLY ━━
+Only send to hospital immediately for these specific situations — do NOT over-trigger this:
+- Chest pain or tightness (possible heart attack)
+- Cannot breathe / severe breathlessness at rest
+- Stroke signs: face drooping, arm weakness, slurred speech
+- Loss of consciousness or seizure
+- Blood in vomit AND dizziness/fainting together
+- Infant under 6 months with fever
+- Fever above 104F / 40C that is confirmed
+- Severe head injury with confusion
 
-If ANY red flag is present: immediately say "Please go to a hospital or emergency room right now, do not wait" and give ONE specific reason why. Do not ask more questions. Do not give home remedies. Stop there.
+Cough, vomiting alone, headache alone, fever under 104, acidity, cold, flu — these are NOT emergencies. Treat them normally.
+Elderly or diabetic patients with mild-moderate symptoms: ask follow-up questions first before escalating.
+
+If a TRUE emergency: say go to hospital now and give one clear reason. Stop there.
 
 ━━ PHASE 1: GATHER (only if no red flags, exchanges 1-3) ━━
 Ask exactly ONE focused question per reply. Collect: duration, severity 1-10, fever reading, age, existing conditions. Do not diagnose yet.
@@ -65,19 +66,21 @@ conversation_history = []
 current_lang_code = "hi-IN"
 
 
-def get_words_to_protect(text):
-    response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": f"""From the text below, list ONLY the words that an average Indian person would say in English even while speaking Hindi/Telugu/Tamil etc. (like diabetes, BP, fever, tablet, hospital, mobile, laptop, office, MRI, etc.)
-Also include conversational fillers that should stay as-is: Hmm, Okay.
-Output ONLY a comma separated list of those words. Nothing else. If none, output NONE.
-Text: {text}"""}],
-        temperature=0, max_tokens=50,
-    )
-    result = response.choices[0].message.content.strip()
-    if result == "NONE" or not result:
-        return []
-    return [w.strip() for w in result.split(",") if w.strip()]
+ENGLISH_PASSTHROUGH_WORDS = [
+    "diabetes", "BP", "blood pressure", "sugar", "insulin", "fever", "tablet", "capsule",
+    "syrup", "hospital", "doctor", "MRI", "CT scan", "ECG", "X-ray", "ICU", "OPD",
+    "paracetamol", "Crocin", "Dolo", "Digene", "Eno", "ORS", "Disprin", "antacid",
+    "antibiotic", "steroid", "injection", "IV", "drip", "ambulance", "emergency",
+    "oxygen", "pulse", "vomiting", "nausea", "migraine", "acidity",
+    "GERD", "jaundice", "typhoid", "malaria", "dengue", "COVID", "corona",
+    "infection", "viral", "bacterial", "allergy", "asthma", "inhaler",
+    "mobile", "phone", "online", "WhatsApp", "report", "test",
+    "Hmm", "Okay", "OK",
+]
+ENGLISH_PASSTHROUGH = re.compile(
+    r'\b(' + '|'.join(re.escape(w) for w in ENGLISH_PASSTHROUGH_WORDS) + r')\b',
+    re.IGNORECASE
+)
 
 
 def translate(text, source_lang, target_lang):
@@ -85,13 +88,17 @@ def translate(text, source_lang, target_lang):
         return text
     placeholders = {}
     if target_lang != "en-IN":
-        words = get_words_to_protect(text)
-        for i, word in enumerate(words):
-            placeholder = f"[{i}]"
-            pattern = re.compile(re.escape(word), re.IGNORECASE)
-            if pattern.search(text):
-                placeholders[placeholder] = word
-                text = pattern.sub(placeholder, text)
+        seen = set()
+        for match in ENGLISH_PASSTHROUGH.finditer(text):
+            word = match.group()
+            if word.lower() not in seen:
+                seen.add(word.lower())
+                i = len(placeholders)
+                placeholder = f"[{i}]"
+                pattern = re.compile(re.escape(word), re.IGNORECASE)
+                if pattern.search(text):
+                    placeholders[placeholder] = word
+                    text = pattern.sub(placeholder, text)
     url = "https://api.sarvam.ai/translate"
     headers = {"api-subscription-key": SARVAM_API_KEY, "Content-Type": "application/json"}
     payload = {"input": text, "source_language_code": source_lang, "target_language_code": target_lang, "model": "mayura:v1", "mode": "formal"}
@@ -114,34 +121,39 @@ def ask_doctor(english_text):
     return reply
 
 
+def tts_single_chunk(chunk, lang_code, headers):
+    payload = {"text": chunk, "target_language_code": lang_code, "speaker": "ritu", "pace": 1.0, "model": "bulbul:v3"}
+    response = requests.post("https://api.sarvam.ai/text-to-speech", headers=headers, json=payload)
+    audio_bytes = base64.b64decode(response.json()["audios"][0])
+    with wave.open(io.BytesIO(audio_bytes), "rb") as wf:
+        return wf.readframes(wf.getnframes()), wf.getframerate(), wf.getnchannels(), wf.getsampwidth()
+
+
 def text_to_speech(text, lang_code):
-    url = "https://api.sarvam.ai/text-to-speech"
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     headers = {"api-subscription-key": SARVAM_API_KEY, "Content-Type": "application/json"}
-    chunks = re.split(r'(?<=[।.!?])\s+', text) or [text]
+    chunks = [c for c in re.split(r"(?<=[\u0964.!?])\s+", text) if c.strip()]
+    if not chunks:
+        chunks = [text]
 
-    all_frames = b""
-    sample_rate = 22050
-    n_channels = 1
-    sampwidth = 2
-
-    for chunk in chunks:
-        if not chunk.strip():
-            continue
-        payload = {"text": chunk, "target_language_code": lang_code, "speaker": "ritu", "pace": 1.0, "model": "bulbul:v3"}
-        response = requests.post(url, headers=headers, json=payload)
-        audio_bytes = base64.b64decode(response.json()["audios"][0])
-        with wave.open(io.BytesIO(audio_bytes), 'rb') as wf:
-            sample_rate = wf.getframerate()
-            n_channels = wf.getnchannels()
-            sampwidth = wf.getsampwidth()
-            all_frames += wf.readframes(wf.getnframes())
+    if len(chunks) == 1:
+        frames, rate, channels, sampwidth = tts_single_chunk(chunks[0], lang_code, headers)
+    else:
+        results = {}
+        with ThreadPoolExecutor(max_workers=min(len(chunks), 4)) as ex:
+            futures = {ex.submit(tts_single_chunk, chunk, lang_code, headers): i for i, chunk in enumerate(chunks)}
+            for future in as_completed(futures):
+                idx = futures[future]
+                results[idx] = future.result()
+        frames = b"".join(results[i][0] for i in sorted(results))
+        rate, channels, sampwidth = results[0][1], results[0][2], results[0][3]
 
     out_buf = io.BytesIO()
-    with wave.open(out_buf, 'wb') as wf:
-        wf.setnchannels(n_channels)
+    with wave.open(out_buf, "wb") as wf:
+        wf.setnchannels(channels)
         wf.setsampwidth(sampwidth)
-        wf.setframerate(sample_rate)
-        wf.writeframes(all_frames)
+        wf.setframerate(rate)
+        wf.writeframes(frames)
     out_buf.seek(0)
     return base64.b64encode(out_buf.read()).decode()
 

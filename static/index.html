@@ -960,7 +960,7 @@ async function toggleRecording() {
       for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
       const rms=Math.sqrt(sum/data.length)*100;
       if(rms>5) lastSound=Date.now();  // lower threshold = more sensitive to quiet speech
-      else if(Date.now()-lastSound>4000) stopRecording();  // 4s silence window — less jumpy
+      else if(Date.now()-lastSound>2000) stopRecording();  // 2s silence window
     },100);
 
     maxTimer=setTimeout(()=>stopRecording(),30000);  // 30s max
