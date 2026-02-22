@@ -736,6 +736,7 @@ let silenceTimer=null, maxTimer=null, audioCtx=null, analyser=null;
 // Abort controller + session token to kill stale language switches
 let langAbortController=null, currentSession=0;
 let currentAudio=null; // track playing audio so we can stop it
+let conversationHistory=[]; // stored client-side, sent with each request
 
 // Build language pills
 const langScroll = document.getElementById("langScroll");
@@ -852,7 +853,8 @@ async function selectLanguage(lang, btn) {
   document.getElementById("callStatus").textContent="Connecting...";
   document.getElementById("callStatus").style.color="var(--accent)";
 
-  // Clear conversation
+  // Clear conversation and history
+  conversationHistory=[];
   const c=document.getElementById("convoMessages");
   c.innerHTML='';
   addThinking();
@@ -922,8 +924,9 @@ async function processAudio() {
   addConvoMsg("user",transcript);
   addThinking();
   showCaption("DoctorAI is thinking...");
-  const chatRes=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:transcript})});
+  const chatRes=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:transcript, history:conversationHistory})});
   const chatData=await chatRes.json();
+  if(chatData.history) conversationHistory=chatData.history;
   addConvoMsg("doctor",chatData.text);
   showCaption(chatData.text);
   await playAudio(chatData.audio);
@@ -960,7 +963,7 @@ async function toggleRecording() {
       for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; sum+=v*v; }
       const rms=Math.sqrt(sum/data.length)*100;
       if(rms>5) lastSound=Date.now();  // lower threshold = more sensitive to quiet speech
-      else if(Date.now()-lastSound>2000) stopRecording();  // 2s silence window
+      else if(Date.now()-lastSound>3000) stopRecording();  // 3s silence window
     },100);
 
     maxTimer=setTimeout(()=>stopRecording(),30000);  // 30s max
