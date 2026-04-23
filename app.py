@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from groq import Groq
 from flask import Flask, request, jsonify, Response, stream_with_context
+from flask_cors import CORS
 
 load_dotenv()
 
@@ -20,12 +21,22 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MAX_HISTORY_TURNS = 12
+MAX_HISTORY_TURNS = 12  # = MAX_TURNS_PER_CHAT in frontend (must stay in sync)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger("doctorai")
+log = logging.getLogger("vedicai")
 
 app = Flask(__name__)
+CORS(
+    app,
+    origins=[
+        "https://vedic.web.app",
+        "https://vedic.firebaseapp.com",
+        "http://localhost:7860",
+        "http://127.0.0.1:7860",
+    ],
+    supports_credentials=True,
+)
 
 # ────────────────────────────────────────────────────────────────────────────
 # Session state
@@ -37,7 +48,7 @@ SESSIONS_LOCK = Lock()
 def get_session(sid):
     with SESSIONS_LOCK:
         if sid not in SESSIONS:
-            SESSIONS[sid] = {"lang_code": "hi-IN", "history": []}
+            SESSIONS[sid] = {"lang_code": "hi-IN", "history": [], "turn_count": 0}
         return SESSIONS[sid]
 
 
@@ -51,133 +62,70 @@ def get_or_create_sid():
 # ────────────────────────────────────────────────────────────────────────────
 # System prompt — Ayurveda + yoga first
 # ────────────────────────────────────────────────────────────────────────────
-DOCTOR_SYSTEM_PROMPT = """You are DoctorAI, a warm but decisive female physician in India who blends modern medicine with Ayurveda and yoga. You are on a voice call.
+DOCTOR_SYSTEM_PROMPT = """You are VedicAI, a warm, decisive female physician in India blending Ayurveda, yoga, and modern medicine. You are on a voice call.
 
-━━ LANGUAGE — ABSOLUTE RULE ━━
-You MUST respond in PURE ENGLISH ONLY. Your output is machine-translated to the patient's language afterwards — so Hinglish or romanized Hindi words will be mistranslated.
-• NEVER use romanized Hindi words: no "pet", "sir", "gala", "kamar", "pair", "sharir", "dard", "bukhar", "khansi", "jukam", "thakan".
-• Instead use their English equivalents: stomach/abdomen, head, throat, lower back, leg, body, pain, fever, cough, cold, fatigue.
-• The ONLY Hindi/Sanskrit words allowed are proper-noun remedies and practices that have no English name: jeera water, ajwain, triphala, ashwagandha, haldi doodh, tulsi, giloy, chyawanprash, Vajrasana, Pawanmuktasana, Anulom-Vilom, Bhramari, Kapalbhati, Surya Namaskar, etc. These stay as-is.
-• Everything else — sentence structure, connective words, symptom descriptions, diagnoses — must be clean English.
-• Examples of what NOT to write: "pet pain", "sir mein dard", "gala kharab". Write: "stomach pain", "headache", "sore throat".
+LANGUAGE RULE (critical): Reply in pure English only — your output is machine-translated. Never use romanized Hindi (no "pet", "sir dard", "bukhar", "khansi"). Use English equivalents: stomach, head, fever, cough. Exception: keep Sanskrit/Ayurvedic proper nouns as-is (jeera water, triphala, ashwagandha, haldi doodh, tulsi, Vajrasana, Anulom-Vilom, Kapalbhati, etc).
 
-━━ YOUR APPROACH ━━
-You favor natural healing: Ayurvedic remedies, yoga asanas, pranayama, and dietary changes come FIRST.
-OTC medicine is a last resort, not a default. Prescription drugs — never; refer to in-person doctor.
+APPROACH: Natural healing first — Ayurveda, yoga, diet. OTC only if needed. Never prescribe Rx drugs.
 
-━━ RESPONSE LENGTH — STRICT ━━
-Phase 1 replies: 1 short sentence (one question).
-Phase 2 replies: 3–4 short sentences (diagnosis + remedy + optional medicine + mandatory follow-up question).
-This is a voice call. No lists, no line breaks. Keep each sentence short.
+PHASE 1 — GATHER INFO (ask one question per turn):
+Must know before advising: (1) duration, (2) symptom detail/location, (3) age, (4) existing conditions (diabetes, BP, etc).
+Ask gender only for chest/urinary/hormonal issues. Ask pregnancy only if advice would change.
+One question per reply, never two.
 
-━━ CLARIFY BEFORE ASSUMING ━━
-If the symptom is vague or could mean multiple things, ask ONE short clarifying question before diagnosing. Never invent details about the patient's job, diet, pets, family, or lifestyle that they didn't mention.
-• "Stomach pain" → ask where it hurts (upper/lower/one side) OR what triggers it (after eating, empty stomach).
-• "Headache" → ask where and whether it pulses or is dull.
-• "Weakness" → ask if it's all-day or certain times.
-• "Breathing issue" → ask whether at rest or on exertion.
-Max 1 clarifying question, then move to advice. Don't ask three things in a row.
+PHASE 2 — ADVISE (once you have duration + detail + age + conditions):
+3–4 short sentences: diagnosis ("This looks like X.") + Ayurvedic remedy + yoga/pranayama + follow-up question.
+End EVERY advice turn with a warm follow-up question (mandatory).
+Safety: no OTC for under-12 without pediatrician note; no inversions for 65+; no honey/jaggery/chyawanprash for diabetics; no Kapalbhati/Bhastrika for hypertensives; no strong herbs/asanas for pregnant.
 
-━━ CONVERSATION STRUCTURE ━━
+PLAN TRIGGER: When you have given initial advice, always ask: "Would you like a structured daily plan — morning, afternoon, and evening routine — for the next week?" If they say yes or ask for a plan/routine/schedule, reply with ONLY this exact tag on its own line:
+[GENERATE_PLAN]
+Nothing else. The system will generate the plan card separately.
 
-▸ PHASE 1 — GATHERING (2–4 exchanges; don't rush)
-Ask ONE short question per turn. Skip what's already known.
+REMEDIES (use these):
+- Digestive: jeera water, ajwain+black salt, triphala at night, Vajrasana after meals, Pawanmuktasana, Anulom-Vilom
+- Cold/cough: tulsi-ginger kadha, haldi doodh, steam, Bhramari pranayama
+- Fever: giloy juice, tulsi-pepper kadha, rest, coconut water
+- Headache: peppermint oil on temples, Balasana, Sheetali pranayama
+- Stress/sleep: ashwagandha at night, warm milk+nutmeg, Bhramari, Shavasana
+- Joint/back: warm sesame oil massage, haldi doodh, Setu Bandhasana, Marjariasana
+- Skin: neem paste, aloe vera, triphala, Kapalbhati
+- Weakness: chyawanprash, soaked almonds, ashwagandha, slow Surya Namaskar
 
-ALWAYS ask before giving advice (unless already told):
-  1. Duration — how long?
-  2. Location or trigger — where/what makes it worse (for ambiguous symptoms)
-  3. Age — actual number if adult, age in years/months for children
-  4. Existing conditions — "Any diabetes, BP, or other conditions I should know about?"
+OTC (last resort): Paracetamol 500mg (fever >101°F/strong pain), ORS (dehydration), Digene/Eno (acute acidity), Cetirizine (allergy).
 
-ASK ONLY WHEN RELEVANT to the symptom:
-  • Gender — only for chest pain, urinary issues, reproductive/hormonal symptoms, or patterns that differ by sex
-  • Pregnancy — only for women of likely reproductive age AND when advice would change (most Ayurvedic herbs, many asanas, most medicines)
-  • Current medications — only if suggesting OTC that could interact
+TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it" (masculine in Hindi). Never re-introduce yourself after turn 1. No lists or line breaks — this is voice."""
 
-Rules:
-  • ONE question per reply. Never two.
-  • Combine related asks when natural: "How old are you, and any diabetes or BP?" is fine for one turn.
-  • If the opening message already gave you duration + one detail, still ask age + conditions before Phase 2.
-  • Don't ask for info you won't use.
 
-▸ PHASE 2 — ADVICE (after you have: duration + symptom detail + age + conditions)
-Exactly 3–4 short sentences:
-1. Diagnosis — use "This looks like X.", "This seems to be X.", or "This appears to be X." Be decisive. NEVER say "Sounds like" (translates literally as audio/noise in Hindi).
-2. Ayurvedic remedy + yoga/pranayama (1 of each if relevant) — specific, actionable, SAFE for their age/conditions.
-3. Only if truly needed: one OTC with adult dose + one escalation trigger. Often skip this.
-4. ALWAYS end with a short, warm follow-up question to keep the conversation going. Examples: "Does that sound doable?", "Any other symptoms bothering you?", "How is your sleep and appetite these days?", "Would you like me to suggest a diet plan for this?", "Do you want tips to prevent this from coming back?"
-The follow-up question is MANDATORY on every advice turn — the patient shouldn't have to wonder what to ask next.
+# ────────────────────────────────────────────────────────────────────────────
+# Plan generation — separate prompt, called once
+# ────────────────────────────────────────────────────────────────────────────
+PLAN_SYSTEM_PROMPT = """You are a wellness planner. Given a patient's diagnosis and remedies, generate a structured recovery plan as valid JSON only — no markdown, no explanation.
 
-Safety rules for advice:
-  • Children under 12: no OTC without "check the label and consult a pediatrician" caveat. Gentler Ayurveda only.
-  • Elderly (65+): lower-intensity yoga, avoid inversions (Sarvangasana, Halasana, Viparita Karani).
-  • Diabetic: no honey, no jaggery, no chyawanprash (has sugar).
-  • Hypertensive: avoid Kapalbhati, Bhastrika, Surya Namaskar at high pace.
-  • Pregnant: no triphala, no Bhujangasana/Dhanurasana, no strong herbs, no fasting — refer to doctor for most things.
+Output this exact shape:
+{
+  "title": "7-Day Recovery Plan for <condition>",
+  "duration": "7 days",
+  "phases": [
+    {
+      "phase": "Week 1",
+      "days": "Days 1–7",
+      "schedule": {
+        "morning": ["item1", "item2"],
+        "afternoon": ["item1"],
+        "evening": ["item1", "item2"],
+        "night": ["item1"]
+      },
+      "diet": ["food rule 1", "food rule 2"],
+      "avoid": ["thing to avoid 1", "thing to avoid 2"]
+    }
+  ],
+  "milestone": "What improvement to expect by end of plan"
+}
 
-━━ SENTENCE STYLE — IMPORTANT FOR VOICE ━━
-Your output is spoken aloud. Use SHORT sentences. Break thoughts into separate sentences with periods. Avoid long comma-chained sentences.
-BAD: "This is acidity, drink jeera water and do Vajrasana after meals, and also try triphala at night."
-GOOD: "Sounds like acidity. Try jeera water and Vajrasana after meals. Triphala at night helps too."
-Three short sentences beat one long one — the patient needs natural breathing pauses.
-
-━━ AYURVEDIC & YOGA TOOLKIT ━━
-
-Digestive (stomach pain, acidity, gas, bloating, constipation):
-• Ayurveda: jeera water, ajwain with warm water + black salt, saunf after meals, triphala at night, hing with warm water, buttermilk with roasted jeera
-• Yoga: Vajrasana (sit 5 min after meals), Pawanmuktasana, Vrikshasana. Pranayama: Anulom-Vilom, Kapalbhati (not if acute acidity)
-• Diet: light khichdi, warm water, avoid spicy/oily/fried
-
-Cold/cough/congestion:
-• Ayurveda: tulsi-ginger-honey kadha, haldi doodh, steam with ajwain or eucalyptus, mulethi, sitopaladi churna with honey
-• Yoga: Bhujangasana, Matsyasana. Pranayama: Bhramari, Ujjayi
-• Diet: warm soups, no cold drinks or curd at night
-
-Fever (under 103°F):
-• Ayurveda: tulsi-ginger-pepper kadha, giloy juice, light khichdi, coriander seed water
-• Yoga: rest only, no asanas
-• Hydration: nimbu pani with rock salt, coconut water
-
-Headache/migraine:
-• Ayurveda: cold compress, peppermint oil on temples, Brahmi
-• Yoga: Shavasana in dark, Balasana. Pranayama: Sheetali, Anulom-Vilom
-
-Stress/sleep/anxiety:
-• Ayurveda: ashwagandha at night, warm milk with nutmeg, Brahmi, jatamansi
-• Yoga: Shavasana, Balasana, Viparita Karani. Pranayama: Bhramari, Anulom-Vilom
-• Habit: no screens 1 hr before bed, warm oil foot massage
-
-Joint/back pain:
-• Ayurveda: warm sesame/mustard oil massage, haldi doodh, methi seed water
-• Yoga: Bhujangasana, Marjariasana, Setu Bandhasana (avoid if acute)
-
-Skin (acne, rash):
-• Ayurveda: neem paste, turmeric with rose water, aloe vera, triphala internally
-• Yoga: Sarvangasana, Halasana. Pranayama: Kapalbhati
-• Diet: less dairy/sugar/fried, more water
-
-Weakness/low energy:
-• Ayurveda: chyawanprash, soaked almonds, ashwagandha, dates with milk
-• Yoga: slow Surya Namaskar, Tadasana. Pranayama: Bhastrika
-
-━━ WHEN OTC IS APPROPRIATE ━━
-Suggest OTC only if symptoms are moderate+ or naturals alone won't help fast enough:
-• Paracetamol 500mg for fever above 101°F or strong pain
-• ORS for dehydration from vomiting/diarrhea
-• Digene/Eno for acute acidity only (chronic = diet + Ayurveda)
-• Cetirizine for acute allergy
-Name with adult dose. For kids/elderly: "check the label for their age."
-
-━━ NEVER ━━
-• Antibiotics, steroids, Rx drugs → "you'd need a doctor in person for that"
-• "I'm concerned" or emotional performance phrases
-• Re-introducing yourself after turn 1
-
-━━ TONE ━━
-Warm, confident, quick. Preferred openers: "I see,", "Alright,", "Understood,", "Okay,", "Hmm,", "Right,"
-AVOID: "Got it" (translates with masculine gender in Hindi). Use "I see" or "Understood" instead.
-Sound like a knowledgeable aunty-doctor who actually practices what she preaches."""
-
+For chronic conditions use 3 phases: Week 1 (relief), Weeks 2–4 (recovery), Month 2–3 (maintenance).
+For acute/mild conditions use 1 phase: 7 days.
+Keep each item short (under 10 words). Be specific — times, quantities, names. Output JSON only."""
 
 # ────────────────────────────────────────────────────────────────────────────
 # Emergency filter
@@ -281,7 +229,6 @@ ENGLISH_PASSTHROUGH_WORDS = [
     "test",
     "Okay",
     "OK",
-    # Interjections — keep English so TTS reads them naturally, not translated
     "Hmm",
     "Hmmm",
     "Uh-huh",
@@ -333,39 +280,50 @@ def translate(text, source_lang, target_lang):
         return text
     for placeholder, word in placeholders.items():
         translated = translated.replace(placeholder, word)
-    # Gender agreement: the doctor is female, but translation defaults to masculine verb forms.
-    # Apply feminine-form corrections for Hindi output only.
     if target_lang == "hi-IN":
         translated = apply_feminine_hindi(translated)
     return translated
 
 
-# Masculine → feminine Hindi verb/adjective fixes for when the doctor (female) speaks.
-# Only targets first-person contexts ("I/मैं") and common phrases. Keeps the rest alone.
 HINDI_FEMININE_FIXES = [
-    # "मैं समझ गया" → "मैं समझ गई"  (and standalone "समझ गया" when it's the doctor speaking)
     (re.compile(r"समझ\s+गया"), "समझ गई"),
-    (re.compile(r"समझ\s+गयी"), "समझ गई"),  # normalize variant spelling too
-    # "मैंने देखा" stays, but "मैं देख रहा हूँ" → "देख रही हूँ"
+    (re.compile(r"समझ\s+गयी"), "समझ गई"),
     (re.compile(r"रहा\s+हूँ"), "रही हूँ"),
     (re.compile(r"रहा\s+हूं"), "रही हूं"),
-    # "मैं सोचता हूँ" → "सोचती हूँ"  (generic present tense -ता हूँ → -ती हूँ)
     (re.compile(r"([\u0915-\u0939])ता\s+हूँ"), r"\1ती हूँ"),
     (re.compile(r"([\u0915-\u0939])ता\s+हूं"), r"\1ती हूं"),
-    # "मैं ... करूंगा" (future) → "करूंगी"
     (re.compile(r"करूंगा"), "करूंगी"),
     (re.compile(r"दूंगा"), "दूंगी"),
     (re.compile(r"लूंगा"), "लूंगी"),
-    # Common standalone masculine acknowledgments that are clearly the doctor speaking
-    (re.compile(r"\bठीक है, मैंने समझा\b"), "ठीक है, मैंने समझा"),  # gender-neutral, keep
 ]
 
 
 def apply_feminine_hindi(text):
-    """Convert masculine first-person Hindi verb forms to feminine (doctor is female)."""
     for pattern, replacement in HINDI_FEMININE_FIXES:
         text = pattern.sub(replacement, text)
     return text
+
+
+_SCRIPT_RANGES = [
+    ('ऀ', 'ॿ', 'hi-IN'),
+    ('ঀ', '৿', 'bn-IN'),
+    ('਀', '੿', 'pa-IN'),
+    ('઀', '૿', 'gu-IN'),
+    ('஀', '௿', 'ta-IN'),
+    ('ఀ', '౿', 'te-IN'),
+    ('ಀ', '೿', 'kn-IN'),
+    ('ഀ', 'ൿ', 'ml-IN'),
+]
+
+
+def detect_script_lang(text):
+    """Return dominant Indian language code found in text, or 'en-IN'."""
+    counts = {}
+    for start, end, lang in _SCRIPT_RANGES:
+        count = sum(1 for c in text if start <= c <= end)
+        if count:
+            counts[lang] = count
+    return max(counts, key=counts.get) if counts else 'en-IN'
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -406,50 +364,66 @@ def split_sentences(text):
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Yoga pose image resolver — fetches Wikipedia thumbnail URLs, cached forever.
-# The dict maps canonical pose name (as the LLM writes it) → Wikipedia page title.
-# Only asanas are here — pranayama is not visual.
+# Yoga pose image resolver
 # ────────────────────────────────────────────────────────────────────────────
 POSE_WIKI_PAGES = {
-    "Vajrasana": "Vajrasana_(yoga)",
-    "Pawanmuktasana": "Pawanmuktasana",
-    "Vrikshasana": "Vrikshasana",
-    "Bhujangasana": "Bhujangasana",
-    "Matsyasana": "Matsyasana",
-    "Shavasana": "Shavasana",
-    "Balasana": "Balasana",
-    "Viparita Karani": "Viparita_Karani",
-    "Marjariasana": "Marjaryasana",  # "Cat pose"; Wikipedia uses Marjaryasana
-    "Setu Bandhasana": "Setu_Bandha_Sarvangasana",
     "Tadasana": "Tadasana",
-    "Surya Namaskar": "Surya_Namaskar",
-    "Sarvangasana": "Sarvangasana",
-    "Halasana": "Halasana",
+    "Vrikshasana": "Vrikshasana",
+    "Trikonasana": "Trikonasana",
+    "Ardha Chandrasana": "Ardha_Chandrasana",
+    "Uttanasana": "Uttanasana",
+    "Utkatasana": "Utkatasana",
+    "Garudasana": "Garudasana",
+    "Natarajasana": "Natarajasana",
+    "Virabhadrasana I": "Virabhadrasana_I",
+    "Virabhadrasana II": "Virabhadrasana_II",
+    "Virabhadrasana III": "Virabhadrasana_III",
+    "Prasarita Padottanasana": "Prasarita_Padottanasana",
+    "Vajrasana": "Vajrasana_(yoga)",
     "Padmasana": "Padmasana",
     "Sukhasana": "Sukhasana",
-    "Dhanurasana": "Dhanurasana",
-    "Ustrasana": "Ustrasana",
+    "Dandasana": "Dandasana",
     "Paschimottanasana": "Paschimottanasana",
-    "Trikonasana": "Trikonasana",
-    "Uttanasana": "Uttanasana",
+    "Janu Sirsasana": "Janu_Sirsasana",
+    "Ardha Matsyendrasana": "Ardha_Matsyendrasana",
+    "Baddha Konasana": "Baddha_Konasana",
     "Gomukhasana": "Gomukhasana",
+    "Virasana": "Virasana",
+    "Malasana": "Malasana",
+    "Shavasana": "Shavasana",
+    "Balasana": "Balasana",
+    "Pawanmuktasana": "Pawanmuktasana",
+    "Setu Bandhasana": "Setu_Bandha_Sarvangasana",
+    "Viparita Karani": "Viparita_Karani",
+    "Supta Baddha Konasana": "Supta_Baddha_Konasana",
+    "Navasana": "Navasana",
+    "Salabhasana": "Salabhasana",
+    "Dhanurasana": "Dhanurasana",
+    "Matsyasana": "Matsyasana",
+    "Bhujangasana": "Bhujangasana",
+    "Ustrasana": "Ustrasana",
+    "Marjariasana": "Marjaryasana",
+    "Adho Mukha Svanasana": "Adho_Mukha_Svanasana",
+    "Urdhva Mukha Svanasana": "Urdhva_Mukha_Svanasana",
+    "Anjaneyasana": "Anjaneyasana",
+    "Sarvangasana": "Sarvangasana",
+    "Halasana": "Halasana",
+    "Sirsasana": "Sirsasana",
+    "Bakasana": "Bakasana",
+    "Surya Namaskar": "Surya_Namaskar",
 }
 
-# Build a single regex that matches any pose name (case-insensitive, word-boundary).
-# Sort by length desc so "Setu Bandhasana" matches before "Bandhasana" alone.
 _POSE_NAMES_SORTED = sorted(POSE_WIKI_PAGES.keys(), key=len, reverse=True)
 _POSE_REGEX = re.compile(
     r"\b(" + "|".join(re.escape(p) for p in _POSE_NAMES_SORTED) + r")\b",
     re.IGNORECASE,
 )
 
-# In-memory cache: pose name → {"name": ..., "image": url} or None (failed lookup)
 _POSE_IMAGE_CACHE = {}
 _POSE_CACHE_LOCK = Lock()
 
 
 def _fetch_pose_image(pose_name):
-    """Fetch the Wikipedia thumbnail for a pose. Returns URL or None."""
     page = POSE_WIKI_PAGES.get(pose_name)
     if not page:
         return None
@@ -462,7 +436,6 @@ def _fetch_pose_image(pose_name):
         if r.status_code != 200:
             return None
         data = r.json()
-        # Prefer original image (higher quality), fall back to thumbnail
         img = (data.get("originalimage") or {}).get("source") or (
             data.get("thumbnail") or {}
         ).get("source")
@@ -473,20 +446,16 @@ def _fetch_pose_image(pose_name):
 
 
 def find_poses_in_text(english_text):
-    """Return list of {name, image} dicts for poses mentioned in text.
-    Deduplicated within a single call (first mention wins)."""
     if not english_text:
         return []
     found = []
     seen_lower = set()
     for m in _POSE_REGEX.finditer(english_text):
         raw = m.group(1)
-        # Canonicalize: match back to the exact key in POSE_WIKI_PAGES
         canonical = next((k for k in POSE_WIKI_PAGES if k.lower() == raw.lower()), None)
         if not canonical or canonical.lower() in seen_lower:
             continue
         seen_lower.add(canonical.lower())
-
         with _POSE_CACHE_LOCK:
             cached = _POSE_IMAGE_CACHE.get(canonical, "__unset__")
         if cached == "__unset__":
@@ -495,7 +464,6 @@ def find_poses_in_text(english_text):
                 _POSE_IMAGE_CACHE[canonical] = img
         else:
             img = cached
-
         if img:
             found.append({"name": canonical, "image": img})
     return found
@@ -510,45 +478,87 @@ def tts_all(text, lang_code):
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# Streaming LLM — yields complete English sentences as they form
+# Streaming LLM
 # ────────────────────────────────────────────────────────────────────────────
 _EN_SENTENCE_END = re.compile(r"([.!?])(\s+|$)")
 
 
 def stream_llm_sentences(english_text, history):
+    import time as _time
+
     messages = (
         [{"role": "system", "content": DOCTOR_SYSTEM_PROMPT}]
-        + history[-MAX_HISTORY_TURNS:]
+        + history[-MAX_HISTORY_TURNS * 2 :]
         + [{"role": "user", "content": english_text}]
     )
-    buffer = ""
-    try:
-        stream = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=messages,
-            temperature=0.4,
-            max_tokens=200,
-            stream=True,
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content or ""
-            if not delta:
+    max_retries = 3
+    for attempt in range(max_retries):
+        buffer = ""
+        try:
+            stream = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                temperature=0.4,
+                max_tokens=300,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if not delta:
+                    continue
+                buffer += delta
+                while True:
+                    m = _EN_SENTENCE_END.search(buffer)
+                    if not m:
+                        break
+                    end = m.end()
+                    sentence = buffer[:end].strip()
+                    buffer = buffer[end:]
+                    if sentence:
+                        yield sentence
+            if buffer.strip():
+                yield buffer.strip()
+            return  # success
+        except Exception as e:
+            is_rate_limit = "429" in str(e) or "rate" in str(e).lower()
+            log.warning(
+                f"groq attempt {attempt+1}/{max_retries} failed [{type(e).__name__}]: {e}"
+            )
+            if is_rate_limit and attempt < max_retries - 1:
+                wait = 4**attempt  # 1s, 4s, 16s
+                log.info(f"Rate limited — retrying in {wait}s")
+                _time.sleep(wait)
                 continue
-            buffer += delta
-            while True:
-                m = _EN_SENTENCE_END.search(buffer)
-                if not m:
-                    break
-                end = m.end()
-                sentence = buffer[:end].strip()
-                buffer = buffer[end:]
-                if sentence:
-                    yield sentence
-        if buffer.strip():
-            yield buffer.strip()
+            log.error(f"groq failed after {attempt+1} attempts")
+            yield "I'm having trouble responding right now. Please try again in a moment."
+            return
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Plan generator
+# ────────────────────────────────────────────────────────────────────────────
+def generate_plan_json(conversation_summary, lang):
+    """Call LLM once to generate a structured plan. Returns parsed dict or None."""
+    try:
+        resp = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": PLAN_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": f"Patient conversation summary: {conversation_summary}\n\nGenerate the recovery plan JSON.",
+                },
+            ],
+            temperature=0.3,
+            max_tokens=800,
+        )
+        raw = resp.choices[0].message.content or ""
+        # Strip any accidental markdown fences
+        raw = re.sub(r"```json|```", "", raw).strip()
+        return json.loads(raw)
     except Exception as e:
-        log.error(f"groq stream failed: {e}")
-        yield "I'm having trouble responding right now. Could you say that again?"
+        log.warning(f"plan generation failed: {e}")
+        return None
 
 
 def sse(event, data):
@@ -577,7 +587,8 @@ def set_language():
     lang = data.get("lang_code", "hi-IN")
     sess["lang_code"] = lang
     sess["history"] = []
-    greeting_en = "Hello, I'm DoctorAI. What's bothering you today?"
+    sess["turn_count"] = 0
+    greeting_en = "Hello, I'm VedicAI. What's bothering you today?"
     greeting_local = (
         translate(greeting_en, "en-IN", lang) if lang != "en-IN" else greeting_en
     )
@@ -615,7 +626,7 @@ def transcribe():
 
 @app.route("/chat_stream", methods=["POST"])
 def chat_stream():
-    """SSE stream. Events: 'sentence' (text+audio), 'done', 'error'."""
+    """SSE stream. Events: 'sentence' (text+audio+poses), 'done', 'error'."""
     sid = get_or_create_sid()
     sess = get_session(sid)
     lang = sess["lang_code"]
@@ -625,15 +636,27 @@ def chat_stream():
     if not user_text_local:
         return Response(sse("error", {"msg": "empty"}), mimetype="text/event-stream")
 
-    user_text_en = (
-        translate(user_text_local, lang, "en-IN")
-        if lang != "en-IN"
-        else user_text_local
-    )
+    # Hard cap — refuse if server-side history is also full
+    if sess.get("turn_count", 0) >= MAX_HISTORY_TURNS:
+        return Response(
+            sse(
+                "error",
+                {
+                    "msg": "context_limit",
+                    "text": "Chat limit reached. Please start a new chat.",
+                },
+            ),
+            mimetype="text/event-stream",
+        )
+
+    if lang != "en-IN":
+        user_text_en = translate(user_text_local, lang, "en-IN")
+    else:
+        detected = detect_script_lang(user_text_local)
+        user_text_en = translate(user_text_local, detected, "en-IN") if detected != "en-IN" else user_text_local
     is_emergency, emergency_reply = check_emergency(user_text_en)
 
     def generate():
-        # Emergency: one sentence, done
         if is_emergency:
             log.info(f"EMERGENCY sid={sid[:6]}: {user_text_en[:80]}")
             reply_local = (
@@ -647,15 +670,12 @@ def chat_stream():
             )
             sess["history"].append({"role": "user", "content": user_text_en})
             sess["history"].append({"role": "assistant", "content": emergency_reply})
-            sess["history"] = sess["history"][-MAX_HISTORY_TURNS:]
+            sess["history"] = sess["history"][-(MAX_HISTORY_TURNS * 2) :]
             yield sse("done", {})
             return
 
-        # Stream LLM. For each complete English sentence, fire translate+TTS in a thread.
-        # Emit events in order, but the LLM keeps generating while earlier sentences
-        # are being synthesized — that's the parallelism win.
         full_reply_en_parts = []
-        pending = []  # list of (en_sentence, future) — kept in submission order
+        pending = []
 
         def process(en_sentence):
             local = (
@@ -666,6 +686,8 @@ def chat_stream():
             audio = tts_chunk(local, lang)
             return local, audio
 
+        plan_triggered = False
+
         def emit_sentence(en_sentence, local_text, audio):
             payload = {"text": local_text, "audio": audio}
             poses = find_poses_in_text(en_sentence)
@@ -674,6 +696,9 @@ def chat_stream():
             return sse("sentence", payload)
 
         for en_sentence in stream_llm_sentences(user_text_en, sess["history"]):
+            if "[GENERATE_PLAN]" in en_sentence:
+                plan_triggered = True
+                continue  # don't emit this as a sentence
             full_reply_en_parts.append(en_sentence)
             pending.append((en_sentence, _TTS_EXECUTOR.submit(process, en_sentence)))
             while pending and pending[0][1].done():
@@ -684,7 +709,6 @@ def chat_stream():
                 except Exception as e:
                     log.warning(f"sentence failed: {e}")
 
-        # Drain remaining in order
         for en_s, fut in pending:
             try:
                 local_text, audio = fut.result(timeout=25)
@@ -696,7 +720,19 @@ def chat_stream():
         if full_reply_en:
             sess["history"].append({"role": "user", "content": user_text_en})
             sess["history"].append({"role": "assistant", "content": full_reply_en})
-            sess["history"] = sess["history"][-MAX_HISTORY_TURNS:]
+            sess["history"] = sess["history"][-(MAX_HISTORY_TURNS * 2) :]
+            sess["turn_count"] = sess.get("turn_count", 0) + 1
+
+        if plan_triggered:
+            # Generate plan inline using the conversation history
+            history_summary = " ".join(
+                m["content"]
+                for m in sess["history"][-8:]
+                if m["role"] in ("user", "assistant")
+            )
+            plan_json = generate_plan_json(history_summary, lang)
+            if plan_json:
+                yield sse("plan", {"plan": plan_json})
 
         yield sse("done", {})
 
@@ -722,5 +758,5 @@ def health():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
-    log.info(f"DoctorAI starting on port {port}")
+    log.info(f"VedicAI starting on port {port}")
     app.run(debug=False, host="0.0.0.0", port=port, threaded=True)
