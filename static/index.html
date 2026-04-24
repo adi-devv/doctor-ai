@@ -476,14 +476,10 @@ body {
   border: 1px solid var(--rule); background: var(--surface);
   color: var(--ink-soft); font-family: 'Inter', sans-serif;
   font-size: 13px; font-weight: 500; cursor: pointer;
-  transition: all 0.18s ease; white-space: nowrap; min-height: 34px;
+  transition: all 0.15s; white-space: nowrap; min-height: 34px;
 }
-.lang-chip:hover { border-color: var(--ink-soft); color: var(--ink); transform: translateY(-1px); }
-.lang-chip:active { transform: translateY(0) scale(0.97); }
-.lang-chip.active {
-  background: var(--ink); border-color: var(--ink); color: white;
-  box-shadow: 0 3px 10px rgba(26,26,26,0.18);
-}
+.lang-chip:hover { border-color: var(--ink-soft); color: var(--ink); }
+.lang-chip.active { background: var(--ink); border-color: var(--ink); color: white; }
 
 .controls {
   max-width: 720px; margin: 0 auto;
@@ -1274,7 +1270,12 @@ async function loadChat(chatId) {
   if (!currentUser || !db) return;
   closeSidebar();
 
-  // Show loading indicator immediately
+  // Instantly mark clicked chat as active in the sidebar
+  document.querySelectorAll(".chat-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.chatId === chatId);
+  });
+
+  // Show loading indicator immediately (stays until messages render)
   abortEverything();
   clearEmpty();
   convo.innerHTML = `
@@ -1334,11 +1335,6 @@ async function loadChat(chatId) {
     });
     updateContextBar();
     convo.scrollTop = convo.scrollHeight;
-
-    // Mark active in sidebar
-    document.querySelectorAll(".chat-item").forEach(el => {
-      el.classList.toggle("active", el.dataset.chatId === chatId);
-    });
   } catch(e) {
     showToast("Couldn't load chat");
     console.warn(e);
