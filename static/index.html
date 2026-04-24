@@ -134,16 +134,36 @@ body {
   font-size: 11px;
   color: var(--ink-faint);
 }
-.chat-item-del {
-  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-  opacity: 0; background: none; border: none;
-  color: var(--ink-faint); cursor: pointer; padding: 2px;
-  transition: opacity 0.15s, color 0.15s;
+.chat-item-actions {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  opacity: 0; transition: opacity 0.15s;
+  display: flex; align-items: center; gap: 2px;
+  background: inherit;
+}
+.chat-item:hover .chat-item-actions,
+.chat-item.active .chat-item-actions { opacity: 1; }
+.chat-item-action {
+  background: none; border: none;
+  color: var(--ink-faint); cursor: pointer; padding: 4px;
+  border-radius: 5px;
+  transition: color 0.15s, background 0.15s;
   display: flex; align-items: center; justify-content: center;
 }
-.chat-item:hover .chat-item-del { opacity: 1; }
-.chat-item-del:hover { color: var(--danger); }
-.chat-item-del svg { width: 13px; height: 13px; }
+.chat-item-action:hover { background: rgba(0,0,0,0.06); color: var(--ink); }
+.chat-item-action.danger:hover { color: var(--danger); }
+.chat-item-action svg { width: 13px; height: 13px; }
+
+.chat-item-rename-input {
+  width: 100%;
+  padding: 2px 4px;
+  font-size: 13px; font-weight: 500;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  outline: none;
+  font-family: inherit;
+}
 
 .sidebar-footer {
   padding: 12px;
@@ -509,11 +529,11 @@ body {
     90deg,
     transparent 0%,
     rgba(255,255,255,0.08) 40%,
-    rgba(255,255,255,0.14) 50%,
+    rgba(255,255,255,0.16) 50%,
     rgba(255,255,255,0.08) 60%,
     transparent 100%
   );
-  animation: thinkShimmer 1.8s linear infinite;
+  animation: thinkShimmer 1.6s linear infinite;
   pointer-events: none;
 }
 @keyframes thinkShimmer {
@@ -523,35 +543,16 @@ body {
 
 .mic-btn.thinking .mic-icon { display: none; }
 .mic-btn.thinking #micLabel {
-  color: rgba(255,255,255,0.9);
+  color: rgba(255,255,255,0.95);
   font-weight: 500;
-  letter-spacing: 0.2px;
-}
-
-/* Audio-wave bars for thinking state */
-.thinking-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 22px;
+  letter-spacing: 0.3px;
+  animation: thinkFade 1.6s ease-in-out infinite;
   position: relative;
   z-index: 1;
 }
-.thinking-dots span {
-  width: 3px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #ffffff, rgba(255,255,255,0.7));
-  animation: twave 1.1s ease-in-out infinite;
-  will-change: height, opacity;
-}
-.thinking-dots span:nth-child(1) { animation-delay: 0s;    }
-.thinking-dots span:nth-child(2) { animation-delay: 0.12s; }
-.thinking-dots span:nth-child(3) { animation-delay: 0.24s; }
-.thinking-dots span:nth-child(4) { animation-delay: 0.36s; }
-.thinking-dots span:nth-child(5) { animation-delay: 0.48s; }
-@keyframes twave {
-  0%, 100% { height: 4px;  opacity: 0.45; }
-  50%      { height: 18px; opacity: 1; }
+@keyframes thinkFade {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
 }
 
 .end-btn {
@@ -918,7 +919,7 @@ body {
     <div class="convo" id="convo">
       <div class="empty" id="empty">
         <div class="empty-title">Namaste. How can I help?</div>
-        <div class="empty-sub">Choose your language below to start a voice consultation — blending Ayurveda, yoga, and modern medicine.</div>
+        <div class="empty-sub">Choose your language below to start a voice consultation, blending Ayurveda, yoga, and modern medicine.</div>
         <div class="empty-arrow">↓</div>
       </div>
     </div>
@@ -934,9 +935,6 @@ body {
           <line x1="12" y1="18" x2="12" y2="22"/>
           <line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
-        <span class="thinking-dots" id="thinkingDots" style="display:none">
-          <span></span><span></span><span></span><span></span><span></span>
-        </span>
         <span id="micLabel">Choose a language first</span>
       </button>
       <button class="end-btn" onclick="endCall()" title="End call" aria-label="End call">
@@ -1021,7 +1019,7 @@ function initFirebase() {
     db   = firebase.firestore();
     auth.onAuthStateChanged(onAuthChanged);
   } catch(e) {
-    console.warn("Firebase not configured — running in guest mode:", e);
+    console.warn("Firebase not configured, running in guest mode:", e);
   }
 }
 
@@ -1105,12 +1103,19 @@ function renderChatList(chats) {
     item.innerHTML = `
       <div class="chat-item-title">${escHtml(chat.title || "Consultation")}</div>
       <div class="chat-item-sub">${escHtml(chat.lang || "")} · ${label}</div>
-      <button class="chat-item-del" onclick="event.stopPropagation();deleteChat('${chat.id}')" title="Delete">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-          <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-        </svg>
-      </button>`;
+      <div class="chat-item-actions">
+        <button class="chat-item-action" onclick="event.stopPropagation();startRenameChat('${chat.id}', this)" title="Rename">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+        </button>
+        <button class="chat-item-action danger" onclick="event.stopPropagation();deleteChat('${chat.id}')" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+      </div>`;
     item.onclick = () => loadChat(chat.id);
     el.appendChild(item);
   });
@@ -1191,7 +1196,6 @@ async function loadChat(chatId) {
         document.querySelectorAll(".lang-chip").forEach(b => {
           if (b.textContent === langName) b.classList.add("active");
         });
-        lockLangChips();
         // Restore session on backend
         await fetch(`${BACKEND_URL}/set_language`, {
           method: "POST",
@@ -1225,6 +1229,55 @@ async function loadChat(chatId) {
     showToast("Couldn't load chat");
     console.warn(e);
   }
+}
+
+function startRenameChat(chatId, btn) {
+  const item = btn.closest(".chat-item");
+  if (!item) return;
+  const titleEl = item.querySelector(".chat-item-title");
+  if (!titleEl || item.querySelector(".chat-item-rename-input")) return;
+  const currentTitle = titleEl.textContent;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "chat-item-rename-input";
+  input.value = currentTitle;
+  input.maxLength = 80;
+
+  titleEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let committed = false;
+  const finish = async (save) => {
+    if (committed) return;
+    committed = true;
+    const newTitle = input.value.trim();
+    const restoreEl = document.createElement("div");
+    restoreEl.className = "chat-item-title";
+    if (save && newTitle && newTitle !== currentTitle) {
+      restoreEl.textContent = newTitle;
+      input.replaceWith(restoreEl);
+      try {
+        await db.collection("users").doc(currentUser.uid)
+          .collection("chats").doc(chatId)
+          .update({ title: newTitle });
+      } catch (e) {
+        showToast("Rename failed");
+        restoreEl.textContent = currentTitle;
+      }
+    } else {
+      restoreEl.textContent = currentTitle;
+      input.replaceWith(restoreEl);
+    }
+  };
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener("blur", () => finish(true));
+  input.addEventListener("click", (e) => e.stopPropagation());
 }
 
 async function deleteChat(chatId) {
@@ -1287,7 +1340,7 @@ async function doGoogleSignIn() {
   if (!auth) return;
   const provider = new firebase.auth.GoogleAuthProvider();
   try { await auth.signInWithPopup(provider); }
-  catch(e) { if (e.code !== "auth/popup-closed-by-user") showToast("Sign-in failed — please try again."); }
+  catch(e) { if (e.code !== "auth/popup-closed-by-user") showToast("Sign-in failed. Please try again."); }
 }
 
 function toggleUserMenu() {
@@ -1377,7 +1430,7 @@ const $ = id => document.getElementById(id);
 const statusPill = $("statusPill"), statusText = $("statusText"), timer = $("timer");
 const convo = $("convo"), empty = $("empty");
 const micBtn = $("micBtn"), micLabel = $("micLabel");
-const thinkingDots = $("thinkingDots"), micIcon = $("micIcon");
+const micIcon = $("micIcon");
 const presence = $("presence"), avatar = $("avatar"), wave = $("wave");
 const toast = $("toast");
 
@@ -1420,12 +1473,8 @@ function setMicState(s, label) {
   // Label
   micLabel.textContent = label;
 
-  // Icon & dots — set immediately, no transition delay
-  micIcon.style.display = "none";
-  thinkingDots.style.display = "none";
-
   if (s === "thinking") {
-    thinkingDots.style.display = "inline-flex";
+    micIcon.style.display = "none";
   } else {
     micIcon.style.display = "";
     if (s === "recording") {
@@ -1481,7 +1530,7 @@ function addThinking() {
 function addEmergencyBanner() {
   const b = document.createElement("div");
   b.className = "emergency-banner";
-  b.textContent = "⚠ Emergency detected — please act now";
+  b.textContent = "⚠ Emergency detected. Please act now.";
   convo.appendChild(b);
   convo.scrollTop = convo.scrollHeight;
 }
@@ -1541,9 +1590,11 @@ LANGUAGES.forEach(lang => {
   btn.className = "lang-chip";
   btn.textContent = lang.name;
   btn.onclick = () => {
-    // Block if a language is already active in this chat
-    if (selectedLang) return;
-    selectLanguage(lang, btn);
+    if (!selectedLang) {
+      selectLanguage(lang, btn);
+    } else if (lang.code !== selectedLang.code) {
+      changeLanguage(lang, btn);
+    }
   };
   $("langScroll").appendChild(btn);
 });
@@ -1569,7 +1620,6 @@ async function selectLanguage(lang, btn) {
   document.querySelectorAll(".lang-chip").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   selectedLang = lang;
-  lockLangChips(); // lock immediately on click
   currentTurns = 0;
   const warn = document.getElementById("ctxWarning");
   if (warn) warn.remove();
@@ -1605,11 +1655,56 @@ async function selectLanguage(lang, btn) {
   (data.audios || []).forEach(enqueueAudio);
 }
 
+async function changeLanguage(lang, btn) {
+  const prevLang = selectedLang;
+  const prevBtn = [...document.querySelectorAll(".lang-chip")]
+    .find(b => b.classList.contains("active"));
+
+  // Cancel any in-flight audio/recording/stream before switching
+  abortEverything();
+
+  // Optimistic UI update
+  document.querySelectorAll(".lang-chip").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  selectedLang = lang;
+  $("presenceSub").textContent = `General physician · Ayurveda + modern · ${lang.name}`;
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/change_language`, {
+      method: "POST",
+      headers: sidHeaders({ "Content-Type": "application/json" }),
+      credentials: "include",
+      body: JSON.stringify({ lang_code: lang.code }),
+    });
+    if (!res.ok) throw new Error("change_language_failed");
+  } catch (e) {
+    // Revert UI on failure
+    selectedLang = prevLang;
+    document.querySelectorAll(".lang-chip").forEach(b => b.classList.remove("active"));
+    if (prevBtn) prevBtn.classList.add("active");
+    if (prevLang) $("presenceSub").textContent = `General physician · Ayurveda + modern · ${prevLang.name}`;
+    showToast("Couldn't change language");
+    return;
+  }
+
+  // Persist new language on the current chat doc, if any
+  if (currentChatId && currentUser && db) {
+    db.collection("users").doc(currentUser.uid)
+      .collection("chats").doc(currentChatId)
+      .update({ lang: lang.name, lang_code: lang.code })
+      .catch(() => {});
+  }
+
+  setMicState("idle", "Tap to speak");
+  state = "idle";
+  showToast(`Switched to ${lang.name}`);
+}
+
 // ─── Recording ───
 async function toggleRecording() {
   if (!selectedLang || state === "thinking") return;
   // Block if context limit reached
-  if (currentTurns >= MAX_TURNS_PER_CHAT) { showToast("Chat limit reached — start a new chat"); return; }
+  if (currentTurns >= MAX_TURNS_PER_CHAT) { showToast("Chat limit reached. Start a new chat."); return; }
 
   if (!isRecording) {
     let stream;
@@ -1667,7 +1762,7 @@ async function toggleRecording() {
     mediaRecorder.onstop = () => processAudio();
     mediaRecorder.start();
     isRecording = true; state = "recording";
-    setMicState("recording", "Listening — tap to stop");
+    setMicState("recording", "Listening, tap to stop");
   } else {
     stopRecording();
   }
@@ -1704,7 +1799,7 @@ async function processAudio() {
   if (myToken !== sessionToken) return;
 
   if (!transcript) {
-    showToast("Didn't catch that — try again");
+    showToast("Didn't catch that. Try again.");
     setMicState("idle", "Tap to speak"); state = "idle"; return;
   }
 
@@ -1811,7 +1906,7 @@ async function streamChat(userText, myToken) {
         } else if (evt.event === "done") {
           if (doctorBubble) doctorBubble.classList.remove("streaming");
         } else if (evt.event === "error") {
-          showToast("Doctor is offline — try again");
+          showToast("Doctor is offline. Try again.");
         }
       }
     }
@@ -1940,7 +2035,7 @@ function resetToHome() {
   convo.innerHTML = `
     <div class="empty" id="empty">
       <div class="empty-title">Namaste. How can I help?</div>
-      <div class="empty-sub">Choose your language below to start a voice consultation — blending Ayurveda, yoga, and modern medicine.</div>
+      <div class="empty-sub">Choose your language below to start a voice consultation, blending Ayurveda, yoga, and modern medicine.</div>
       <div class="empty-arrow">↓</div>
     </div>`;
 }
