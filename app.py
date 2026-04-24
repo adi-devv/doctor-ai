@@ -36,6 +36,7 @@ CORS(
         "http://127.0.0.1:7860",
     ],
     supports_credentials=True,
+    allow_headers=["Content-Type", "X-Session-Id"],
 )
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -53,10 +54,21 @@ def get_session(sid):
 
 
 def get_or_create_sid():
-    sid = request.cookies.get("sid")
+    sid = request.headers.get("X-Session-Id") or request.cookies.get("sid")
     if not sid:
         sid = uuid.uuid4().hex
     return sid
+
+
+def _set_sid_cookie(resp, sid):
+    resp.set_cookie(
+        "sid",
+        sid,
+        max_age=60 * 60 * 24 * 7,
+        samesite="None",
+        secure=True,
+        httponly=False,
+    )
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -575,7 +587,7 @@ def index():
         content = f.read()
     sid = get_or_create_sid()
     resp = Response(content, mimetype="text/html")
-    resp.set_cookie("sid", sid, max_age=60 * 60 * 24 * 7, samesite="Lax")
+    _set_sid_cookie(resp, sid)
     return resp
 
 
@@ -594,7 +606,7 @@ def set_language():
     )
     audios = tts_all(greeting_local, lang)
     resp = jsonify({"text": greeting_local, "audios": audios})
-    resp.set_cookie("sid", sid, max_age=60 * 60 * 24 * 7, samesite="Lax")
+    _set_sid_cookie(resp, sid)
     return resp
 
 
@@ -620,7 +632,7 @@ def transcribe():
         log.error(f"stt failed: {e}")
         return jsonify({"transcript": "", "error": "stt_failed"}), 502
     resp = jsonify({"transcript": text})
-    resp.set_cookie("sid", sid, max_age=60 * 60 * 24 * 7, samesite="Lax")
+    _set_sid_cookie(resp, sid)
     return resp
 
 
@@ -739,7 +751,7 @@ def chat_stream():
     resp = Response(stream_with_context(generate()), mimetype="text/event-stream")
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Accel-Buffering"] = "no"
-    resp.set_cookie("sid", sid, max_age=60 * 60 * 24 * 7, samesite="Lax")
+    _set_sid_cookie(resp, sid)
     return resp
 
 
