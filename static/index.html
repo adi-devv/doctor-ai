@@ -1354,9 +1354,8 @@ async function loadChat(chatId) {
       setMicState("disabled", "Choose a language to continue");
     }
 
-    // Prepend the greeting in the chat's language if there's at least one user turn.
-    const hasUserTurn = storedMessages.some(m => m.role === "user");
-    if (hasUserTurn && langCode) {
+    // Chats always have at least one user turn, so always prepend the greeting.
+    if (langCode) {
       const greetingText = await getGreetingText(langCode);
       if (greetingText) addMsg("doctor", greetingText);
     }
