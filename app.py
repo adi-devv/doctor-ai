@@ -609,7 +609,7 @@ def set_language():
         translate(greeting_en, "en-IN", lang) if lang != "en-IN" else greeting_en
     )
     audios = tts_all(greeting_local, lang)
-    resp = jsonify({"text": greeting_local, "audios": audios})
+    resp = jsonify({"text": greeting_local, "text_en": greeting_en, "audios": audios})
     _set_sid_cookie(resp, sid)
     return resp
 
@@ -630,6 +630,10 @@ def restore_session():
     sess["lang_code"] = lang
 
     def _to_en(msg):
+        # Prefer pre-translated English saved at write time
+        text_en = (msg.get("text_en") or "").strip()
+        if text_en:
+            return text_en
         text = (msg.get("text") or "").strip()
         if not text:
             return None
@@ -820,6 +824,14 @@ def chat_stream():
             plan_json = generate_plan_json(history_summary, lang)
             if plan_json:
                 yield sse("plan", {"plan": plan_json})
+
+        # Emit the English versions of this exchange so the client can persist both
+        # local and English text in Firestore (dual-field save). Skip if nothing to save.
+        if full_reply_en or plan_triggered:
+            yield sse("exchange_en", {
+                "user_en": user_text_en,
+                "reply_en": full_reply_en,
+            })
 
         yield sse("done", {})
 

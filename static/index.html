@@ -1106,7 +1106,8 @@ function sidHeaders(extra) {
 // ─── Chat context limit ───
 const MAX_TURNS_PER_CHAT = 12; // must match server MAX_HISTORY_TURNS
 let currentTurns = 0; // tracks assistant turns in active chat
-let pendingGreeting = null; // greeting text to persist when new chat is first saved
+let pendingGreeting = null;   // local-language greeting to persist when new chat is first saved
+let pendingGreetingEn = null; // English greeting to persist alongside
 
 // ─── Init Firebase ───
 let db = null, auth = null, currentUser = null, currentChatId = null;
@@ -1234,7 +1235,7 @@ function escHtml(s) {
 }
 
 // ─── Save / load chat ───
-async function saveCurrentChat(userText, doctorText) {
+async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn) {
   if (!currentUser || !db) return;
   try {
     const userRef = db.collection("users").doc(currentUser.uid);
@@ -1243,7 +1244,6 @@ async function saveCurrentChat(userText, doctorText) {
 
     let isNewChat = false;
     if (!currentChatId) {
-      // Create new chat doc
       const title = userText.slice(0, 50);
       const docRef = await chatsRef.add({
         title,
@@ -1258,15 +1258,30 @@ async function saveCurrentChat(userText, doctorText) {
     }
 
     const msgsRef = chatsRef.doc(currentChatId).collection("messages");
-    // On first save, include the initial greeting so it's restored when the chat is reopened
     if (isNewChat && pendingGreeting) {
-      await msgsRef.add({ role:"doctor", text: pendingGreeting, ts: now, greeting: true });
+      await msgsRef.add({
+        role: "doctor",
+        text: pendingGreeting,
+        text_en: pendingGreetingEn || "",
+        ts: now, greeting: true,
+      });
       pendingGreeting = null;
+      pendingGreetingEn = null;
     }
-    await msgsRef.add({ role:"user", text: userText, ts: now });
-    await msgsRef.add({ role:"doctor", text: doctorText, ts: now });
+    await msgsRef.add({
+      role: "user",
+      text: userText,
+      text_en: userTextEn || "",
+      ts: now,
+    });
+    await msgsRef.add({
+      role: "doctor",
+      text: doctorText,
+      text_en: doctorTextEn || "",
+      ts: now,
+    });
 
-    loadChatList(); // refresh sidebar
+    loadChatList();
   } catch(e) { console.warn("saveCurrentChat failed:", e); }
 }
 
@@ -1318,7 +1333,11 @@ async function loadChat(chatId) {
         // Rebuild the doctor's memory of this chat on the server (skip the generic greeting)
         const restoreMessages = storedMessages
           .filter(m => !m.greeting)
-          .map(m => ({ role: m.role === "doctor" ? "doctor" : "user", text: m.text }));
+          .map(m => ({
+            role: m.role === "doctor" ? "doctor" : "user",
+            text: m.text,
+            text_en: m.text_en || "",
+          }));
         await fetch(`${BACKEND_URL}/restore_session`, {
           method: "POST",
           headers: sidHeaders({ "Content-Type": "application/json" }),
@@ -1568,6 +1587,7 @@ function startNewChat() {
   currentChatId = null;
   currentTurns = 0;
   pendingGreeting = null;
+  pendingGreetingEn = null;
   const warn = document.getElementById("ctxWarning");
   if (warn) warn.remove();
   endCall();
@@ -1833,7 +1853,8 @@ async function selectLanguage(lang, btn) {
 
   const t = $("thinkingMsg"); if (t) t.remove();
   addMsg("doctor", data.text);
-  pendingGreeting = data.text;  // save to Firestore on first exchange
+  pendingGreeting   = data.text;                // local, for display on restore
+  pendingGreetingEn = data.text_en || data.text; // English, for LLM context on restore
   setStatus("Connected", "active");
   startTimer();
   setMicState("idle", "Tap to speak");
@@ -1992,7 +2013,7 @@ async function processAudio() {
   addThinking();
   state = "streaming";
 
-  const doctorReply = await streamChat(transcript, myToken);
+  const reply = await streamChat(transcript, myToken);
 
   if (myToken === sessionToken) {
     setMicState("idle", "Tap to speak");
@@ -2000,8 +2021,10 @@ async function processAudio() {
     // Increment turn count and update bar
     currentTurns++;
     updateContextBar();
-    // Save to Firestore
-    if (doctorReply) saveCurrentChat(transcript, doctorReply);
+    // Save to Firestore with both local and English text
+    if (reply && reply.local) {
+      saveCurrentChat(transcript, reply.userEn, reply.local, reply.en);
+    }
   }
 }
 
@@ -2011,6 +2034,8 @@ async function streamChat(userText, myToken) {
   let doctorMsgEl = null;
   let doctorBubble = null;
   let fullText = "";
+  let fullReplyEn = "";
+  let userTextEn = "";
 
   try {
     const res = await fetch(`${BACKEND_URL}/chat_stream`, {
@@ -2078,6 +2103,9 @@ async function streamChat(userText, myToken) {
           convo.scrollTop = convo.scrollHeight;
           if (evt.data.audio) enqueueAudio(evt.data.audio);
           if (evt.data.emergency) addEmergencyBanner();
+        } else if (evt.event === "exchange_en") {
+          userTextEn  = evt.data.user_en  || "";
+          fullReplyEn = evt.data.reply_en || "";
         } else if (evt.event === "plan") {
           // Render plan card after the last doctor message
           const planCard = renderPlanCard(evt.data.plan);
@@ -2100,13 +2128,13 @@ async function streamChat(userText, myToken) {
     if (e.name !== "AbortError") {
       showToast("Connection dropped");
     }
-    return "";
+    return { local: "", en: "", userEn: "" };
   } finally {
     // Always clear the thinking indicator, even if no sentences arrived (e.g. plan-only turn)
     const t = $("thinkingMsg"); if (t) t.remove();
     chatAbortController = null;
   }
-  return fullText;
+  return { local: fullText, en: fullReplyEn, userEn: userTextEn };
 }
 
 function parseSSE(raw) {
