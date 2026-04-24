@@ -113,12 +113,21 @@ body {
   padding: 9px 10px;
   border-radius: 9px;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.12s, opacity 0.22s ease, transform 0.22s ease, height 0.22s ease, padding 0.22s ease, margin 0.22s ease;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
   position: relative;
+  overflow: hidden;
+}
+.chat-item.deleting {
+  opacity: 0;
+  transform: translateX(18px);
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+  pointer-events: none;
 }
 .chat-item:hover { background: var(--rule-soft); }
 .chat-item.active { background: var(--accent-soft); }
@@ -467,10 +476,14 @@ body {
   border: 1px solid var(--rule); background: var(--surface);
   color: var(--ink-soft); font-family: 'Inter', sans-serif;
   font-size: 13px; font-weight: 500; cursor: pointer;
-  transition: all 0.15s; white-space: nowrap; min-height: 34px;
+  transition: all 0.18s ease; white-space: nowrap; min-height: 34px;
 }
-.lang-chip:hover { border-color: var(--ink-soft); color: var(--ink); }
-.lang-chip.active { background: var(--ink); border-color: var(--ink); color: white; }
+.lang-chip:hover { border-color: var(--ink-soft); color: var(--ink); transform: translateY(-1px); }
+.lang-chip:active { transform: translateY(0) scale(0.97); }
+.lang-chip.active {
+  background: var(--ink); border-color: var(--ink); color: white;
+  box-shadow: 0 3px 10px rgba(26,26,26,0.18);
+}
 
 .controls {
   max-width: 720px; margin: 0 auto;
@@ -590,7 +603,11 @@ body {
   transition: transform 0.15s, border-color 0.15s;
   cursor: zoom-in;
 }
-.pose-card:hover { border-color: var(--accent); }
+.pose-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(184,76,46,0.12);
+}
 .pose-card:active { transform: scale(0.97); }
 .pose-card img {
   width: 100%; height: 90px; object-fit: cover;
@@ -617,13 +634,91 @@ body {
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
 .toast {
-  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: 100px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
   background: var(--ink); color: white;
   padding: 10px 18px; border-radius: 100px; font-size: 13px;
+  box-shadow: 0 6px 20px rgba(26,26,26,0.22);
   z-index: 100; opacity: 0;
-  transition: opacity 0.3s, transform 0.3s; pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.28s cubic-bezier(.22,1.15,.36,1);
+  pointer-events: none;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════════════
+   CONFIRM DIALOG
+══════════════════════════════════════════════ */
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 250;
+  background: rgba(26,26,26,0.45);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  animation: confirmFadeIn 0.18s ease forwards;
+}
+.confirm-overlay.closing {
+  animation: confirmFadeOut 0.18s ease forwards;
+}
+@keyframes confirmFadeIn  { to { opacity: 1; } }
+@keyframes confirmFadeOut { to { opacity: 0; } }
+
+.confirm-modal {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  padding: 22px 22px 16px;
+  width: 100%; max-width: 340px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  transform: translateY(12px) scale(0.96);
+  opacity: 0;
+  animation: confirmRise 0.24s cubic-bezier(.22,1.15,.36,1) forwards;
+}
+.confirm-overlay.closing .confirm-modal {
+  animation: confirmSink 0.16s ease forwards;
+}
+@keyframes confirmRise {
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes confirmSink {
+  to { transform: translateY(6px) scale(0.97); opacity: 0; }
+}
+
+.confirm-title {
+  font-family: 'Fraunces', serif;
+  font-size: 17px; font-weight: 600;
+  color: var(--ink); margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+.confirm-message {
+  font-size: 13.5px; color: var(--ink-soft);
+  line-height: 1.55; margin-bottom: 18px;
+}
+.confirm-actions {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.confirm-btn {
+  padding: 9px 18px;
+  border-radius: 100px;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.12s;
+}
+.confirm-btn:active { transform: scale(0.97); }
+.confirm-btn.cancel:hover { border-color: var(--ink-soft); }
+.confirm-btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+.confirm-btn.danger:hover {
+  background: #a7321f;
+  border-color: #a7321f;
+}
 
 /* ══════════════════════════════════════════════
    AUTH MODAL
@@ -1300,23 +1395,88 @@ function startRenameChat(chatId, btn) {
   input.addEventListener("click", (e) => e.stopPropagation());
 }
 
+function confirmDialog({ title, message, confirmLabel = "Confirm", confirmStyle = "danger" }) {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+    overlay.innerHTML = `
+      <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cdTitle">
+        <div class="confirm-title" id="cdTitle">${escHtml(title)}</div>
+        <div class="confirm-message">${escHtml(message)}</div>
+        <div class="confirm-actions">
+          <button class="confirm-btn cancel" type="button">Cancel</button>
+          <button class="confirm-btn ${confirmStyle}" type="button">${escHtml(confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    let settled = false;
+    const close = (result) => {
+      if (settled) return;
+      settled = true;
+      overlay.classList.add("closing");
+      document.removeEventListener("keydown", keyHandler);
+      setTimeout(() => overlay.remove(), 180);
+      resolve(result);
+    };
+    const keyHandler = (e) => {
+      if (e.key === "Escape") close(false);
+      else if (e.key === "Enter") close(true);
+    };
+    overlay.querySelector(".cancel").onclick = () => close(false);
+    overlay.querySelector(`.confirm-btn.${confirmStyle}`).onclick = () => close(true);
+    overlay.onclick = (e) => { if (e.target === overlay) close(false); };
+    document.addEventListener("keydown", keyHandler);
+    // Focus the danger button so Enter triggers the destructive action intentionally
+    setTimeout(() => overlay.querySelector(`.confirm-btn.${confirmStyle}`)?.focus(), 20);
+  });
+}
+
 async function deleteChat(chatId) {
   if (!currentUser || !db) return;
-  if (!confirm("Delete this chat?")) return;
+
+  const ok = await confirmDialog({
+    title: "Delete this chat?",
+    message: "This conversation and all its messages will be permanently removed.",
+    confirmLabel: "Delete",
+    confirmStyle: "danger",
+  });
+  if (!ok) return;
+
+  // Animate the sidebar item out before the actual delete
+  const item = document.querySelector(`.chat-item[data-chat-id="${chatId}"]`);
+  if (item) {
+    const h = item.offsetHeight;
+    item.style.height = h + "px";
+    // Force reflow so the explicit height is committed before we transition to 0
+    void item.offsetHeight;
+    item.classList.add("deleting");
+    item.style.height = "0px";
+  }
+
   try {
     const ref = db.collection("users").doc(currentUser.uid).collection("chats").doc(chatId);
-    // Delete sub-collection messages in batches
     const msgs = await ref.collection("messages").limit(100).get();
     const batch = db.batch();
     msgs.docs.forEach(d => batch.delete(d.ref));
     batch.delete(ref);
     await batch.commit();
+
+    // Wait a beat for the slide-out to finish before refreshing the list
+    await new Promise(r => setTimeout(r, 220));
+
     if (currentChatId === chatId) {
       currentChatId = null;
       resetToHome();
     }
     loadChatList();
-  } catch(e) { showToast("Delete failed"); }
+  } catch(e) {
+    showToast("Delete failed");
+    if (item) {
+      item.classList.remove("deleting");
+      item.style.height = "";
+    }
+  }
 }
 
 // ─── Context limit ───
