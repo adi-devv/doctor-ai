@@ -614,6 +614,55 @@ def set_language():
     return resp
 
 
+@app.route("/restore_session", methods=["POST"])
+def restore_session():
+    """Rebuild the LLM's English history from a saved chat's localized messages.
+
+    Accepts: { lang_code, messages: [{role: "user"|"doctor", text: "..."}] }
+    Detects the script of each message and translates it to English in parallel,
+    then sets session history and turn_count accordingly.
+    """
+    sid = get_or_create_sid()
+    sess = get_session(sid)
+    data = request.json or {}
+    lang = data.get("lang_code") or sess.get("lang_code", "hi-IN")
+    messages = data.get("messages") or []
+    sess["lang_code"] = lang
+
+    def _to_en(msg):
+        text = (msg.get("text") or "").strip()
+        if not text:
+            return None
+        src = detect_script_lang(text)
+        if src == "en-IN":
+            return text
+        try:
+            return translate(text, src, "en-IN")
+        except Exception as e:
+            log.warning(f"restore translate failed: {e}")
+            return text  # fall back to original; LLM can still use it as context
+
+    translated = list(_TTS_EXECUTOR.map(_to_en, messages))
+
+    history = []
+    assistant_turns = 0
+    for msg, text_en in zip(messages, translated):
+        if not text_en:
+            continue
+        role = "user" if msg.get("role") == "user" else "assistant"
+        history.append({"role": role, "content": text_en})
+        if role == "assistant":
+            assistant_turns += 1
+
+    # Keep only the last MAX_HISTORY_TURNS exchanges so we don't blow past the cap
+    sess["history"] = history[-(MAX_HISTORY_TURNS * 2):]
+    sess["turn_count"] = min(assistant_turns, MAX_HISTORY_TURNS)
+
+    resp = jsonify({"ok": True, "restored": len(sess["history"]), "turns": sess["turn_count"]})
+    _set_sid_cookie(resp, sid)
+    return resp
+
+
 @app.route("/change_language", methods=["POST"])
 def change_language():
     """Switch output language mid-chat without resetting history or turn count."""
@@ -748,9 +797,16 @@ def chat_stream():
                 log.warning(f"tail sentence failed: {e}")
 
         full_reply_en = " ".join(full_reply_en_parts).strip()
-        if full_reply_en:
+        if full_reply_en or plan_triggered:
             sess["history"].append({"role": "user", "content": user_text_en})
-            sess["history"].append({"role": "assistant", "content": full_reply_en})
+            if full_reply_en:
+                sess["history"].append({"role": "assistant", "content": full_reply_en})
+            elif plan_triggered:
+                # Record the plan generation so the LLM knows it has already produced the plan
+                sess["history"].append({
+                    "role": "assistant",
+                    "content": "[Generated a structured daily recovery plan for the patient.]",
+                })
             sess["history"] = sess["history"][-(MAX_HISTORY_TURNS * 2) :]
             sess["turn_count"] = sess.get("turn_count", 0) + 1
 

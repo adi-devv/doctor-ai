@@ -523,27 +523,21 @@ body {
   100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
 }
 
-/* THINKING — single line, minimal */
+/* THINKING — identical visual to idle, just non-interactive */
 .mic-btn.thinking {
-  background-color: #262626;
+  background: var(--ink);
+  color: white;
   cursor: default;
-  box-shadow: 0 4px 14px rgba(26,26,26,0.18);
-  animation: thinkBgPulse 2.2s ease-in-out infinite;
+  box-shadow: 0 4px 14px rgba(26,26,26,0.15);
   outline: none;
 }
 .mic-btn.thinking .mic-icon,
 .mic-btn.thinking .thinking-spinner { display: none !important; }
 .mic-btn.thinking #micLabel {
-  color: rgba(255,255,255,0.9);
+  color: white;
   font-weight: 500;
 }
-@keyframes thinkBgPulse {
-  0%, 100% { background-color: #242424; }
-  50%      { background-color: #333333; }
-}
-@keyframes thinkSpin {
-  to { transform: rotate(360deg); }
-}
+@keyframes thinkSpin { to { transform: rotate(360deg); } }
 .mic-btn:focus { outline: none; }
 .mic-btn:focus-visible { outline: none; }
 
@@ -806,99 +800,106 @@ body {
 }
 
 /* ══════════════════════════════════════════════
-   PLAN CARD
+   PLAN CARD — minimal, clean
 ══════════════════════════════════════════════ */
 .plan-card {
   background: var(--surface);
   border: 1px solid var(--rule);
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
   margin-top: 10px;
   animation: rise 0.35s ease-out;
   max-width: 520px;
 }
 .plan-header {
-  background: linear-gradient(135deg, var(--accent) 0%, #8b3520 100%);
-  padding: 14px 18px;
-  color: white;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--rule-soft);
 }
 .plan-header-title {
   font-family: 'Fraunces', serif;
-  font-size: 15px; font-weight: 600;
+  font-size: 16px; font-weight: 600;
   letter-spacing: -0.3px;
-  margin-bottom: 2px;
+  color: var(--ink);
 }
 .plan-header-sub {
-  font-size: 11.5px; opacity: 0.85;
+  font-size: 12px; color: var(--ink-faint);
+  margin-top: 2px;
 }
 .plan-tabs {
   display: flex; overflow-x: auto;
-  border-bottom: 1px solid var(--rule);
-  scrollbar-width: none; background: var(--surface);
+  border-bottom: 1px solid var(--rule-soft);
+  scrollbar-width: none;
+  padding: 0 8px;
 }
 .plan-tabs::-webkit-scrollbar { display: none; }
 .plan-tab {
   flex-shrink: 0;
-  padding: 9px 14px;
-  font-size: 12px; font-weight: 500;
-  color: var(--ink-soft); cursor: pointer;
+  padding: 10px 12px;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--ink-faint); cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: all 0.15s; background: none; border-top: none;
-  border-left: none; border-right: none; white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  background: none; border-top: none;
+  border-left: none; border-right: none;
+  white-space: nowrap;
 }
+.plan-tab:hover { color: var(--ink-soft); }
 .plan-tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--ink);
+  border-bottom-color: var(--ink);
 }
-.plan-phase { padding: 14px 16px; display: none; }
+.plan-phase { padding: 14px 18px 16px; display: none; }
 .plan-phase.active { display: block; }
 .plan-phase-label {
   font-size: 11px; font-weight: 600; color: var(--ink-faint);
-  text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;
 }
-.plan-slots { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.plan-slots { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .plan-slot {
-  display: flex; gap: 10px; align-items: flex-start;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  align-items: baseline;
 }
-.plan-slot-icon {
-  width: 28px; height: 28px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; flex-shrink: 0; margin-top: 1px;
-}
-.plan-slot-icon.morning  { background: #fff8e1; }
-.plan-slot-icon.afternoon { background: #e8f5e9; }
-.plan-slot-icon.evening  { background: #fce4ec; }
-.plan-slot-icon.night    { background: #ede7f6; }
-.plan-slot-body { flex: 1; min-width: 0; }
 .plan-slot-label {
-  font-size: 11px; font-weight: 600; color: var(--ink-faint);
-  text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px;
+  font-size: 11.5px; font-weight: 600; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  padding-top: 2px;
 }
-.plan-slot-items { display: flex; flex-direction: column; gap: 2px; }
+.plan-slot-items {
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 0;
+}
 .plan-slot-item {
-  font-size: 13px; color: var(--ink);
-  padding: 4px 8px; background: var(--rule-soft);
-  border-radius: 6px; line-height: 1.4;
+  font-size: 13.5px; color: var(--ink);
+  line-height: 1.5;
 }
 .plan-section-title {
   font-size: 11px; font-weight: 600; color: var(--ink-faint);
   text-transform: uppercase; letter-spacing: 0.5px;
-  margin: 10px 0 6px;
+  margin: 14px 0 6px;
 }
-.plan-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.plan-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .plan-tag {
-  font-size: 12px; padding: 3px 9px; border-radius: 100px;
+  font-size: 12.5px; padding: 3px 10px; border-radius: 100px;
   background: var(--rule-soft); color: var(--ink-soft);
+  border: 1px solid transparent;
 }
-.plan-tag.avoid { background: #fdecea; color: #b71c1c; }
+.plan-tag.avoid {
+  background: transparent; color: var(--danger);
+  border-color: rgba(194,57,42,0.25);
+}
 .plan-milestone {
-  margin-top: 12px; padding: 10px 12px;
-  background: linear-gradient(135deg, #f3fdf3, #e8f5e9);
-  border-radius: 10px; border: 1px solid #c8e6c9;
-  font-size: 12.5px; color: #2e7d32; line-height: 1.5;
-  display: flex; gap: 8px; align-items: flex-start;
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--rule-soft);
+  font-size: 13px; color: var(--ink-soft); line-height: 1.55;
 }
-.plan-milestone::before { content: "🎯"; flex-shrink: 0; }
+.plan-milestone-label {
+  display: block;
+  font-size: 11px; font-weight: 600; color: var(--ink-faint);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
 
 
 .user-menu {
@@ -1306,20 +1307,23 @@ async function loadChat(chatId) {
 
     // Restore language state
     unlockLangChips();
+    const storedMessages = snap.docs.map(d => d.data());
     if (langCode && langName) {
       const matchLang = LANGUAGES.find(l => l.code === langCode);
       if (matchLang) {
         selectedLang = matchLang;
-        // Highlight the correct chip and lock the rest
         document.querySelectorAll(".lang-chip").forEach(b => {
           if (b.textContent === langName) b.classList.add("active");
         });
-        // Restore session on backend
-        await fetch(`${BACKEND_URL}/set_language`, {
+        // Rebuild the doctor's memory of this chat on the server (skip the generic greeting)
+        const restoreMessages = storedMessages
+          .filter(m => !m.greeting)
+          .map(m => ({ role: m.role === "doctor" ? "doctor" : "user", text: m.text }));
+        await fetch(`${BACKEND_URL}/restore_session`, {
           method: "POST",
           headers: sidHeaders({ "Content-Type": "application/json" }),
           credentials: "include",
-          body: JSON.stringify({ lang_code: langCode }),
+          body: JSON.stringify({ lang_code: langCode, messages: restoreMessages }),
         }).catch(() => {});
         setStatus("Connected", "active");
         startTimer();
@@ -1331,8 +1335,7 @@ async function loadChat(chatId) {
       setMicState("disabled", "Choose a language to continue");
     }
 
-    snap.docs.forEach(d => {
-      const data = d.data();
+    storedMessages.forEach(data => {
       addMsg(data.role, data.text);
       if (data.role === "doctor") currentTurns++;
     });
@@ -2095,11 +2098,12 @@ async function streamChat(userText, myToken) {
     if (doctorBubble) doctorBubble.classList.remove("streaming");
   } catch (e) {
     if (e.name !== "AbortError") {
-      const t = $("thinkingMsg"); if (t) t.remove();
       showToast("Connection dropped");
     }
     return "";
   } finally {
+    // Always clear the thinking indicator, even if no sentences arrived (e.g. plan-only turn)
+    const t = $("thinkingMsg"); if (t) t.remove();
     chatAbortController = null;
   }
   return fullText;
@@ -2141,50 +2145,46 @@ function renderPlanCard(plan) {
   const card = document.createElement("div");
   card.className = "plan-card";
 
-  const slotMeta = {
-    morning:   { icon: "🌅", label: "Morning" },
-    afternoon: { icon: "☀️",  label: "Afternoon" },
-    evening:   { icon: "🌆", label: "Evening" },
-    night:     { icon: "🌙", label: "Night" },
-  };
+  const SLOTS = [
+    ["morning",   "Morning"],
+    ["afternoon", "Afternoon"],
+    ["evening",   "Evening"],
+    ["night",     "Night"],
+  ];
 
   const phases = plan.phases || [];
   const tabsHtml = phases.map((p, i) =>
-    `<button class="plan-tab${i===0?" active":""}" onclick="switchPlanTab(this,${i})">${p.phase}</button>`
+    `<button class="plan-tab${i===0?" active":""}" onclick="switchPlanTab(this,${i})">${escHtml(p.phase || "")}</button>`
   ).join("");
 
   const phasesHtml = phases.map((p, i) => {
     const sched = p.schedule || {};
-    const slotsHtml = Object.entries(slotMeta).map(([key, meta]) => {
+    const slotsHtml = SLOTS.map(([key, label]) => {
       const items = sched[key];
       if (!items || !items.length) return "";
       return `<div class="plan-slot">
-        <div class="plan-slot-icon ${key}">${meta.icon}</div>
-        <div class="plan-slot-body">
-          <div class="plan-slot-label">${meta.label}</div>
-          <div class="plan-slot-items">${items.map(it => `<div class="plan-slot-item">${it}</div>`).join("")}</div>
-        </div>
+        <div class="plan-slot-label">${label}</div>
+        <div class="plan-slot-items">${items.map(it => `<div class="plan-slot-item">${escHtml(it)}</div>`).join("")}</div>
       </div>`;
     }).join("");
 
-    const dietHtml = (p.diet||[]).map(d => `<span class="plan-tag">${d}</span>`).join("");
-    const avoidHtml = (p.avoid||[]).map(a => `<span class="plan-tag avoid">✕ ${a}</span>`).join("");
-    const milestoneHtml = p.milestone || plan.milestone
-      ? `<div class="plan-milestone">${p.milestone || plan.milestone}</div>` : "";
+    const dietHtml  = (p.diet  || []).map(d => `<span class="plan-tag">${escHtml(d)}</span>`).join("");
+    const avoidHtml = (p.avoid || []).map(a => `<span class="plan-tag avoid">${escHtml(a)}</span>`).join("");
+    const milestoneText = p.milestone || plan.milestone;
 
     return `<div class="plan-phase${i===0?" active":""}" data-phase="${i}">
-      <div class="plan-phase-label">${p.days || p.phase}</div>
+      <div class="plan-phase-label">${escHtml(p.days || p.phase || "")}</div>
       <div class="plan-slots">${slotsHtml}</div>
-      ${dietHtml ? `<div class="plan-section-title">Eat</div><div class="plan-tags">${dietHtml}</div>` : ""}
+      ${dietHtml  ? `<div class="plan-section-title">Eat</div><div class="plan-tags">${dietHtml}</div>` : ""}
       ${avoidHtml ? `<div class="plan-section-title">Avoid</div><div class="plan-tags">${avoidHtml}</div>` : ""}
-      ${milestoneHtml}
+      ${milestoneText ? `<div class="plan-milestone"><span class="plan-milestone-label">Expected outcome</span>${escHtml(milestoneText)}</div>` : ""}
     </div>`;
   }).join("");
 
   card.innerHTML = `
     <div class="plan-header">
-      <div class="plan-header-title">${plan.title || "Recovery Plan"}</div>
-      <div class="plan-header-sub">${plan.duration || ""}</div>
+      <div class="plan-header-title">${escHtml(plan.title || "Recovery Plan")}</div>
+      ${plan.duration ? `<div class="plan-header-sub">${escHtml(plan.duration)}</div>` : ""}
     </div>
     ${phases.length > 1 ? `<div class="plan-tabs">${tabsHtml}</div>` : ""}
     ${phasesHtml}
