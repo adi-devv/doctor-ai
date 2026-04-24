@@ -494,7 +494,7 @@ def tts_all(text, lang_code):
 # ────────────────────────────────────────────────────────────────────────────
 # Streaming LLM
 # ────────────────────────────────────────────────────────────────────────────
-_EN_SENTENCE_END = re.compile(r"([.!?])(\s+|$)")
+_EN_SENTENCE_END = re.compile(r"([.!?])\s+")
 
 
 def stream_llm_sentences(english_text, history):

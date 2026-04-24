@@ -1475,6 +1475,7 @@ function setMicState(s, label) {
 
   if (s === "thinking") {
     micIcon.style.display = "none";
+    micIcon.innerHTML = "";
   } else {
     micIcon.style.display = "";
     if (s === "recording") {
