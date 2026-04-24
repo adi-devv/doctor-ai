@@ -523,22 +523,23 @@ body {
   100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
 }
 
-/* THINKING */
+/* THINKING — single line, minimal */
 .mic-btn.thinking {
-  background-color: #2f2f2f;
+  background-color: #2a2a2a;
   cursor: default;
-  box-shadow: 0 4px 18px rgba(26,26,26,0.25);
+  box-shadow: 0 4px 16px rgba(26,26,26,0.22);
 }
-.mic-btn.thinking .mic-icon { display: none; }
+.mic-btn.thinking .mic-icon,
+.mic-btn.thinking .thinking-spinner { display: none; }
 .mic-btn.thinking #micLabel {
-  color: rgba(255,255,255,0.9);
+  color: rgba(255,255,255,0.92);
   font-weight: 500;
   letter-spacing: 0.2px;
+  animation: thinkFade 1.4s ease-in-out infinite;
 }
-.thinking-spinner {
-  width: 18px; height: 18px;
-  flex-shrink: 0;
-  animation: thinkSpin 0.9s linear infinite;
+@keyframes thinkFade {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
 }
 @keyframes thinkSpin {
   to { transform: rotate(360deg); }
@@ -1650,11 +1651,10 @@ function setMicState(s, label) {
   // Label
   micLabel.textContent = label;
 
+  thinkingSpinner.style.display = "none";
   if (s === "thinking") {
     micIcon.style.display = "none";
-    thinkingSpinner.style.display = "";
   } else {
-    thinkingSpinner.style.display = "none";
     micIcon.style.display = "";
     if (s === "recording") {
       micIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>';
