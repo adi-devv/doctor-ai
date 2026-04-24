@@ -614,6 +614,16 @@ def set_language():
     return resp
 
 
+@app.route("/greeting", methods=["GET"])
+def greeting():
+    """Return the translated greeting text only (no TTS, no session changes).
+    Used when restoring a past chat to show the greeting without saving it in Firestore."""
+    lang = request.args.get("lang_code", "en-IN")
+    text_en = "Hello, I'm VedicAI. What's bothering you today?"
+    text = translate(text_en, "en-IN", lang) if lang != "en-IN" else text_en
+    return jsonify({"text": text, "text_en": text_en})
+
+
 @app.route("/restore_session", methods=["POST"])
 def restore_session():
     """Rebuild the LLM's English history from a saved chat's localized messages.

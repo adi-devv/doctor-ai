@@ -1106,8 +1106,22 @@ function sidHeaders(extra) {
 // ─── Chat context limit ───
 const MAX_TURNS_PER_CHAT = 12; // must match server MAX_HISTORY_TURNS
 let currentTurns = 0; // tracks assistant turns in active chat
-let pendingGreeting = null;   // local-language greeting to persist when new chat is first saved
-let pendingGreetingEn = null; // English greeting to persist alongside
+// Cache of greeting text per lang_code, keyed off `greeting_<code>` in localStorage.
+async function getGreetingText(langCode) {
+  if (!langCode) return "";
+  const key = `vedic_greet_${langCode}`;
+  const cached = localStorage.getItem(key);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`${BACKEND_URL}/greeting?lang_code=${encodeURIComponent(langCode)}`);
+    const data = await res.json();
+    if (data && data.text) {
+      localStorage.setItem(key, data.text);
+      return data.text;
+    }
+  } catch (e) { /* ignore; greeting is cosmetic */ }
+  return "";
+}
 
 // ─── Init Firebase ───
 let db = null, auth = null, currentUser = null, currentChatId = null;
@@ -1248,13 +1262,9 @@ async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn) {
         title,
         lang: selectedLang?.name || "",
         lang_code: selectedLang?.code || "",
-        greeting: pendingGreeting || "",
-        greeting_en: pendingGreetingEn || "",
         updatedAt: now, createdAt: now,
       });
       currentChatId = docRef.id;
-      pendingGreeting = null;
-      pendingGreetingEn = null;
     } else {
       await chatsRef.doc(currentChatId).update({ updatedAt: now });
     }
@@ -1307,8 +1317,6 @@ async function loadChat(chatId) {
     const chatData = chatDoc.data() || {};
     const langCode = chatData.lang_code || null;
     const langName = chatData.lang || null;
-    const chatGreeting = chatData.greeting || "";
-    const chatGreetingEn = chatData.greeting_en || "";
 
     currentChatId = chatId;
     currentTurns = 0;
@@ -1316,11 +1324,7 @@ async function loadChat(chatId) {
 
     // Restore language state
     unlockLangChips();
-    const allStored = snap.docs.map(d => d.data());
-    // Old chats (pre-dual-save) stored the greeting as a message with greeting:true.
-    // New chats keep the greeting on the chat doc itself. Strip greeting messages
-    // from both display and restore so we don't double-show when we prepend below.
-    const storedMessages = allStored.filter(m => !m.greeting);
+    const storedMessages = snap.docs.map(d => d.data());
 
     if (langCode && langName) {
       const matchLang = LANGUAGES.find(l => l.code === langCode);
@@ -1350,12 +1354,10 @@ async function loadChat(chatId) {
       setMicState("disabled", "Choose a language to continue");
     }
 
-    // Prepend the saved greeting (from chat doc) when the chat has any user turns.
-    // Falls back to the greeting message from old chats if chat doc has none.
-    const firstUserMsg = storedMessages.find(m => m.role === "user");
-    if (firstUserMsg) {
-      const greetingText = chatGreeting
-        || (allStored.find(m => m.greeting)?.text || "");
+    // Prepend the greeting in the chat's language if there's at least one user turn.
+    const hasUserTurn = storedMessages.some(m => m.role === "user");
+    if (hasUserTurn && langCode) {
+      const greetingText = await getGreetingText(langCode);
       if (greetingText) addMsg("doctor", greetingText);
     }
 
@@ -1591,8 +1593,6 @@ function startNewChat() {
   abortEverything();
   currentChatId = null;
   currentTurns = 0;
-  pendingGreeting = null;
-  pendingGreetingEn = null;
   const warn = document.getElementById("ctxWarning");
   if (warn) warn.remove();
   endCall();
@@ -1858,8 +1858,10 @@ async function selectLanguage(lang, btn) {
 
   const t = $("thinkingMsg"); if (t) t.remove();
   addMsg("doctor", data.text);
-  pendingGreeting   = data.text;                // local, for display on restore
-  pendingGreetingEn = data.text_en || data.text; // English, for LLM context on restore
+  // Keep the freshly-translated greeting cached so past-chat loads are instant
+  if (lang?.code && data.text) {
+    localStorage.setItem(`vedic_greet_${lang.code}`, data.text);
+  }
   setStatus("Connected", "active");
   startTimer();
   setMicState("idle", "Tap to speak");
