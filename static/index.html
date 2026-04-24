@@ -516,43 +516,42 @@ body {
 
 /* THINKING */
 .mic-btn.thinking {
-  background: #2a2a2a;
+  background-color: #2f2f2f;
   cursor: default;
-  box-shadow: 0 4px 20px rgba(26,26,26,0.3);
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(26,26,26,0.25);
 }
-.mic-btn.thinking::after {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,255,255,0.08) 40%,
-    rgba(255,255,255,0.16) 50%,
-    rgba(255,255,255,0.08) 60%,
-    transparent 100%
-  );
-  animation: thinkShimmer 1.6s linear infinite;
-  pointer-events: none;
-}
-@keyframes thinkShimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
 .mic-btn.thinking .mic-icon { display: none; }
 .mic-btn.thinking #micLabel {
-  color: rgba(255,255,255,0.95);
+  color: rgba(255,255,255,0.9);
   font-weight: 500;
-  letter-spacing: 0.3px;
-  animation: thinkFade 1.6s ease-in-out infinite;
-  position: relative;
-  z-index: 1;
+  letter-spacing: 0.2px;
 }
-@keyframes thinkFade {
-  0%, 100% { opacity: 0.75; }
-  50%      { opacity: 1; }
+.thinking-spinner {
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  animation: thinkSpin 0.9s linear infinite;
+}
+@keyframes thinkSpin {
+  to { transform: rotate(360deg); }
+}
+
+.chat-load-indicator {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: var(--ink-faint);
+}
+.chat-load-indicator .ring {
+  width: 32px; height: 32px;
+  border: 3px solid var(--rule);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: thinkSpin 0.9s linear infinite;
+}
+.chat-load-indicator .label {
+  font-size: 12.5px;
 }
 
 .end-btn {
@@ -935,6 +934,10 @@ body {
           <line x1="12" y1="18" x2="12" y2="22"/>
           <line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
+        <svg class="thinking-spinner" id="thinkingSpinner" style="display:none" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.25)" stroke-width="2.5"/>
+          <circle cx="12" cy="12" r="9" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="14 56"/>
+        </svg>
         <span id="micLabel">Choose a language first</span>
       </button>
       <button class="end-btn" onclick="endCall()" title="End call" aria-label="End call">
@@ -1008,6 +1011,7 @@ function sidHeaders(extra) {
 // ─── Chat context limit ───
 const MAX_TURNS_PER_CHAT = 12; // must match server MAX_HISTORY_TURNS
 let currentTurns = 0; // tracks assistant turns in active chat
+let pendingGreeting = null; // greeting text to persist when new chat is first saved
 
 // ─── Init Firebase ───
 let db = null, auth = null, currentUser = null, currentChatId = null;
@@ -1142,6 +1146,7 @@ async function saveCurrentChat(userText, doctorText) {
     const chatsRef = userRef.collection("chats");
     const now = firebase.firestore.FieldValue.serverTimestamp();
 
+    let isNewChat = false;
     if (!currentChatId) {
       // Create new chat doc
       const title = userText.slice(0, 50);
@@ -1152,12 +1157,17 @@ async function saveCurrentChat(userText, doctorText) {
         updatedAt: now, createdAt: now,
       });
       currentChatId = docRef.id;
+      isNewChat = true;
     } else {
       await chatsRef.doc(currentChatId).update({ updatedAt: now });
     }
 
-    // Add the two messages
     const msgsRef = chatsRef.doc(currentChatId).collection("messages");
+    // On first save, include the initial greeting so it's restored when the chat is reopened
+    if (isNewChat && pendingGreeting) {
+      await msgsRef.add({ role:"doctor", text: pendingGreeting, ts: now, greeting: true });
+      pendingGreeting = null;
+    }
     await msgsRef.add({ role:"user", text: userText, ts: now });
     await msgsRef.add({ role:"doctor", text: doctorText, ts: now });
 
@@ -1168,6 +1178,17 @@ async function saveCurrentChat(userText, doctorText) {
 async function loadChat(chatId) {
   if (!currentUser || !db) return;
   closeSidebar();
+
+  // Show loading indicator immediately
+  abortEverything();
+  clearEmpty();
+  convo.innerHTML = `
+    <div class="chat-load-indicator">
+      <div class="ring"></div>
+      <div class="label">Loading chat…</div>
+    </div>`;
+  presence.style.display = "flex";
+
   try {
     // Fetch chat metadata (for lang_code) and messages in parallel
     const chatRef = db.collection("users").doc(currentUser.uid).collection("chats").doc(chatId);
@@ -1182,9 +1203,7 @@ async function loadChat(chatId) {
 
     currentChatId = chatId;
     currentTurns = 0;
-    clearEmpty();
-    convo.innerHTML = "";
-    presence.style.display = "flex";
+    convo.innerHTML = ""; // clear the load indicator
 
     // Restore language state
     unlockLangChips();
@@ -1228,6 +1247,7 @@ async function loadChat(chatId) {
   } catch(e) {
     showToast("Couldn't load chat");
     console.warn(e);
+    convo.innerHTML = "";
   }
 }
 
@@ -1385,6 +1405,7 @@ function startNewChat() {
   abortEverything();
   currentChatId = null;
   currentTurns = 0;
+  pendingGreeting = null;
   const warn = document.getElementById("ctxWarning");
   if (warn) warn.remove();
   endCall();
@@ -1430,7 +1451,7 @@ const $ = id => document.getElementById(id);
 const statusPill = $("statusPill"), statusText = $("statusText"), timer = $("timer");
 const convo = $("convo"), empty = $("empty");
 const micBtn = $("micBtn"), micLabel = $("micLabel");
-const micIcon = $("micIcon");
+const micIcon = $("micIcon"), thinkingSpinner = $("thinkingSpinner");
 const presence = $("presence"), avatar = $("avatar"), wave = $("wave");
 const toast = $("toast");
 
@@ -1475,8 +1496,9 @@ function setMicState(s, label) {
 
   if (s === "thinking") {
     micIcon.style.display = "none";
-    micIcon.innerHTML = "";
+    thinkingSpinner.style.display = "";
   } else {
+    thinkingSpinner.style.display = "none";
     micIcon.style.display = "";
     if (s === "recording") {
       micIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>';
@@ -1650,6 +1672,7 @@ async function selectLanguage(lang, btn) {
 
   const t = $("thinkingMsg"); if (t) t.remove();
   addMsg("doctor", data.text);
+  pendingGreeting = data.text;  // save to Firestore on first exchange
   setStatus("Connected", "active");
   startTimer();
   setMicState("idle", "Tap to speak");

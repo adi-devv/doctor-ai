@@ -189,6 +189,8 @@ def check_emergency(text_en):
 # Translation
 # ────────────────────────────────────────────────────────────────────────────
 ENGLISH_PASSTHROUGH_WORDS = [
+    "VedicAI",
+    "Vedic AI",
     "diabetes",
     "BP",
     "blood pressure",
