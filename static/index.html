@@ -1242,32 +1242,24 @@ async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn) {
     const chatsRef = userRef.collection("chats");
     const now = firebase.firestore.FieldValue.serverTimestamp();
 
-    let isNewChat = false;
     if (!currentChatId) {
       const title = userText.slice(0, 50);
       const docRef = await chatsRef.add({
         title,
         lang: selectedLang?.name || "",
         lang_code: selectedLang?.code || "",
+        greeting: pendingGreeting || "",
+        greeting_en: pendingGreetingEn || "",
         updatedAt: now, createdAt: now,
       });
       currentChatId = docRef.id;
-      isNewChat = true;
+      pendingGreeting = null;
+      pendingGreetingEn = null;
     } else {
       await chatsRef.doc(currentChatId).update({ updatedAt: now });
     }
 
     const msgsRef = chatsRef.doc(currentChatId).collection("messages");
-    if (isNewChat && pendingGreeting) {
-      await msgsRef.add({
-        role: "doctor",
-        text: pendingGreeting,
-        text_en: pendingGreetingEn || "",
-        ts: now, greeting: true,
-      });
-      pendingGreeting = null;
-      pendingGreetingEn = null;
-    }
     await msgsRef.add({
       role: "user",
       text: userText,
@@ -1315,6 +1307,8 @@ async function loadChat(chatId) {
     const chatData = chatDoc.data() || {};
     const langCode = chatData.lang_code || null;
     const langName = chatData.lang || null;
+    const chatGreeting = chatData.greeting || "";
+    const chatGreetingEn = chatData.greeting_en || "";
 
     currentChatId = chatId;
     currentTurns = 0;
@@ -1322,7 +1316,12 @@ async function loadChat(chatId) {
 
     // Restore language state
     unlockLangChips();
-    const storedMessages = snap.docs.map(d => d.data());
+    const allStored = snap.docs.map(d => d.data());
+    // Old chats (pre-dual-save) stored the greeting as a message with greeting:true.
+    // New chats keep the greeting on the chat doc itself. Strip greeting messages
+    // from both display and restore so we don't double-show when we prepend below.
+    const storedMessages = allStored.filter(m => !m.greeting);
+
     if (langCode && langName) {
       const matchLang = LANGUAGES.find(l => l.code === langCode);
       if (matchLang) {
@@ -1330,14 +1329,11 @@ async function loadChat(chatId) {
         document.querySelectorAll(".lang-chip").forEach(b => {
           if (b.textContent === langName) b.classList.add("active");
         });
-        // Rebuild the doctor's memory of this chat on the server (skip the generic greeting)
-        const restoreMessages = storedMessages
-          .filter(m => !m.greeting)
-          .map(m => ({
-            role: m.role === "doctor" ? "doctor" : "user",
-            text: m.text,
-            text_en: m.text_en || "",
-          }));
+        const restoreMessages = storedMessages.map(m => ({
+          role: m.role === "doctor" ? "doctor" : "user",
+          text: m.text,
+          text_en: m.text_en || "",
+        }));
         await fetch(`${BACKEND_URL}/restore_session`, {
           method: "POST",
           headers: sidHeaders({ "Content-Type": "application/json" }),
@@ -1352,6 +1348,15 @@ async function loadChat(chatId) {
     } else {
       setStatus("History", "active");
       setMicState("disabled", "Choose a language to continue");
+    }
+
+    // Prepend the saved greeting (from chat doc) when the chat has any user turns.
+    // Falls back to the greeting message from old chats if chat doc has none.
+    const firstUserMsg = storedMessages.find(m => m.role === "user");
+    if (firstUserMsg) {
+      const greetingText = chatGreeting
+        || (allStored.find(m => m.greeting)?.text || "");
+      if (greetingText) addMsg("doctor", greetingText);
     }
 
     storedMessages.forEach(data => {
