@@ -108,7 +108,7 @@ REMEDIES (use these):
 
 OTC (last resort): Paracetamol 500mg (fever >101°F/strong pain), ORS (dehydration), Digene/Eno (acute acidity), Cetirizine (allergy).
 
-TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it" (masculine in Hindi). Never re-introduce yourself after turn 1. No lists or line breaks, this is voice. Keep every reply under 40 words."""
+TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it" (masculine in Hindi). Never re-introduce yourself after turn 1. No lists or line breaks, this is voice. Say only what's necessary — no filler, no repetition."""
 
 DOCTOR_SYSTEM_PROMPT = _DOCTOR_SYSTEM_PROMPT_BASE  # kept for reference
 
@@ -548,7 +548,7 @@ def stream_llm_sentences(english_text, history, profile=None, consulting_for=Non
                 model="llama-3.3-70b-versatile",
                 messages=messages,
                 temperature=0.4,
-                max_tokens=180,
+                max_tokens=250,
                 stream=True,
             )
             for chunk in stream:
