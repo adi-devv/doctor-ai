@@ -616,7 +616,8 @@ def sse(event, data):
 # Routes
 # ────────────────────────────────────────────────────────────────────────────
 @app.route("/")
-def index():
+@app.route("/chat/<path:chat_id>")
+def index(chat_id=None):
     html_path = os.path.join(BASE_DIR, "static", "index.html")
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()

@@ -1699,21 +1699,14 @@ async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn, p
       text_en: userTextEn || "",
       ts: now,
     });
-    if (doctorText) {
-      await msgsRef.add({
-        role: "doctor",
-        text: doctorText,
-        text_en: doctorTextEn || "",
-        ts: now,
-      });
-    }
-    if (planData) {
-      await msgsRef.add({
-        role: "plan",
-        plan_json: JSON.stringify(planData),
-        ts: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+    const doctorMsg = {
+      role: "doctor",
+      text: doctorText || "",
+      text_en: doctorTextEn || "",
+      ts: now,
+    };
+    if (planData) doctorMsg.plan_json = JSON.stringify(planData);
+    await msgsRef.add(doctorMsg);
 
     loadChatList();
   } catch(e) { console.warn("saveCurrentChat failed:", e); }
@@ -1766,13 +1759,11 @@ async function loadChat(chatId) {
         document.querySelectorAll(".lang-chip").forEach(b => {
           if (b.textContent === langName) b.classList.add("active");
         });
-        const restoreMessages = storedMessages
-          .filter(m => m.role !== "plan")
-          .map(m => ({
-            role: m.role === "doctor" ? "doctor" : "user",
-            text: m.text,
-            text_en: m.text_en || "",
-          }));
+        const restoreMessages = storedMessages.map(m => ({
+          role: m.role === "doctor" ? "doctor" : "user",
+          text: m.text,
+          text_en: m.text_en || "",
+        }));
         await fetch(`${BACKEND_URL}/restore_session`, {
           method: "POST",
           headers: sidHeaders({ "Content-Type": "application/json" }),
@@ -1796,18 +1787,15 @@ async function loadChat(chatId) {
     }
 
     storedMessages.forEach(data => {
-      if (data.role === "plan") {
-        try {
-          const planData = typeof data.plan_json === "string" ? JSON.parse(data.plan_json) : data.plan_json;
-          const msgEl = document.createElement("div");
-          msgEl.className = "msg doctor";
-          msgEl.innerHTML = `<div class="msg-label">VedicAI</div><div class="bubble">Here's your wellness plan:</div>`;
-          msgEl.appendChild(renderPlanCard(planData));
-          convo.appendChild(msgEl);
-        } catch(e) {}
-      } else {
-        addMsg(data.role, data.text);
-        if (data.role === "doctor") currentTurns++;
+      const msgEl = addMsg(data.role, data.text);
+      if (data.role === "doctor") {
+        currentTurns++;
+        if (data.plan_json) {
+          try {
+            const planData = JSON.parse(data.plan_json);
+            msgEl.appendChild(renderPlanCard(planData));
+          } catch(e) {}
+        }
       }
     });
     updateContextBar();
