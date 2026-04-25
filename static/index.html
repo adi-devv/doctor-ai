@@ -2759,6 +2759,9 @@ function nextObStep(currentStep, skip) {
 
 async function finishProfileEdit() {
   obIsEditMode = false;
+  document.getElementById("obDot2").style.display = "";
+  document.querySelector("#obStep0 .ob-step-num").textContent = "Step 1 of 3";
+  document.querySelector("#obStep1 .ob-step-num").textContent = "Step 2 of 3";
   document.getElementById("onboardingModal").classList.add("hidden");
   if (currentUser && db && userProfile) {
     try {
@@ -2801,6 +2804,9 @@ async function finishOnboarding(skip) {
 function openEditProfile() {
   closeAccountModal();
   obIsEditMode = true;
+  document.getElementById("obDot2").style.display = "none";
+  document.querySelector("#obStep0 .ob-step-num").textContent = "Step 1 of 2";
+  document.querySelector("#obStep1 .ob-step-num").textContent = "Step 2 of 2";
   if (userProfile) {
     document.getElementById("obAge").value = userProfile.age || "";
     document.getElementById("obGender").value = userProfile.gender || "";
