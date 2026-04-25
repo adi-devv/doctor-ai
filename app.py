@@ -113,22 +113,34 @@ TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Neve
 DOCTOR_SYSTEM_PROMPT = _DOCTOR_SYSTEM_PROMPT_BASE  # kept for reference
 
 
-def build_system_prompt(profile=None):
+def build_system_prompt(profile=None, consulting_for=None):
     prompt = _DOCTOR_SYSTEM_PROMPT_BASE
-    if not profile:
-        return prompt
-    parts = []
-    if profile.get("age"):        parts.append(f"Age: {profile['age']}")
-    if profile.get("gender"):     parts.append(f"Gender: {profile['gender']}")
-    if profile.get("location"):   parts.append(f"Location: {profile['location']}")
-    if profile.get("conditions"): parts.append(f"Conditions: {', '.join(profile['conditions'])}")
-    if profile.get("medications"):parts.append(f"Medications: {', '.join(profile['medications'])}")
-    if profile.get("allergies"):  parts.append(f"Allergies: {', '.join(profile['allergies'])}")
-    if parts:
-        prompt += (
-            "\n\nUSER PROFILE (you already have this — do NOT ask for these again):\n"
-            + " | ".join(parts)
-        )
+    if consulting_for:
+        parts = []
+        if consulting_for.get("name"):       parts.append(f"Name: {consulting_for['name']}")
+        if consulting_for.get("relation"):   parts.append(f"Relation: {consulting_for['relation']}")
+        if consulting_for.get("age"):        parts.append(f"Age: {consulting_for['age']}")
+        if consulting_for.get("gender"):     parts.append(f"Gender: {consulting_for['gender']}")
+        if consulting_for.get("conditions"): parts.append(f"Conditions: {consulting_for['conditions']}")
+        if parts:
+            prompt += (
+                "\n\nIMPORTANT: The caller is consulting on behalf of a family member, not for themselves."
+                " Address advice to the caller as caregiver. Do NOT ask for details listed below.\n"
+                "PATIENT: " + " | ".join(parts)
+            )
+    elif profile:
+        parts = []
+        if profile.get("age"):        parts.append(f"Age: {profile['age']}")
+        if profile.get("gender"):     parts.append(f"Gender: {profile['gender']}")
+        if profile.get("location"):   parts.append(f"Location: {profile['location']}")
+        if profile.get("conditions"): parts.append(f"Conditions: {', '.join(profile['conditions'])}")
+        if profile.get("medications"):parts.append(f"Medications: {', '.join(profile['medications'])}")
+        if profile.get("allergies"):  parts.append(f"Allergies: {', '.join(profile['allergies'])}")
+        if parts:
+            prompt += (
+                "\n\nUSER PROFILE (you already have this — do NOT ask for these again):\n"
+                + " | ".join(parts)
+            )
     return prompt
 
 
@@ -520,11 +532,11 @@ def tts_all(text, lang_code):
 _EN_SENTENCE_END = re.compile(r"([.!?])\s+")
 
 
-def stream_llm_sentences(english_text, history, profile=None):
+def stream_llm_sentences(english_text, history, profile=None, consulting_for=None):
     import time as _time
 
     messages = (
-        [{"role": "system", "content": build_system_prompt(profile)}]
+        [{"role": "system", "content": build_system_prompt(profile, consulting_for)}]
         + history[-MAX_HISTORY_TURNS * 2 :]
         + [{"role": "user", "content": english_text}]
     )
@@ -627,6 +639,8 @@ def set_language():
     sess["turn_count"] = 0
     if data.get("user_profile"):
         sess["user_profile"] = data["user_profile"]
+    if "consulting_for" in data:
+        sess["consulting_for"] = data["consulting_for"]  # None clears it
     greeting_en = "Hello, I'm VedicAI. What's bothering you today?"
     greeting_local = (
         translate(greeting_en, "en-IN", lang) if lang != "en-IN" else greeting_en
@@ -663,6 +677,8 @@ def restore_session():
     sess["lang_code"] = lang
     if data.get("user_profile"):
         sess["user_profile"] = data["user_profile"]
+    if "consulting_for" in data:
+        sess["consulting_for"] = data["consulting_for"]
 
     def _to_en(msg):
         # Prefer pre-translated English saved at write time
@@ -814,7 +830,7 @@ def chat_stream():
                 payload["poses"] = poses
             return sse("sentence", payload)
 
-        for en_sentence in stream_llm_sentences(user_text_en, sess["history"], sess.get("user_profile")):
+        for en_sentence in stream_llm_sentences(user_text_en, sess["history"], sess.get("user_profile"), sess.get("consulting_for")):
             if "[GENERATE_PLAN]" in en_sentence:
                 plan_triggered = True
                 continue  # don't emit this as a sentence
