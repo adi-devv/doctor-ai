@@ -1671,7 +1671,7 @@ function escHtml(s) {
 }
 
 // ─── Save / load chat ───
-async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn) {
+async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn, planData) {
   if (!currentUser || !db) return;
   try {
     const userRef = db.collection("users").doc(currentUser.uid);
@@ -1698,12 +1698,21 @@ async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn) {
       text_en: userTextEn || "",
       ts: now,
     });
-    await msgsRef.add({
-      role: "doctor",
-      text: doctorText,
-      text_en: doctorTextEn || "",
-      ts: now,
-    });
+    if (doctorText) {
+      await msgsRef.add({
+        role: "doctor",
+        text: doctorText,
+        text_en: doctorTextEn || "",
+        ts: now,
+      });
+    }
+    if (planData) {
+      await msgsRef.add({
+        role: "plan",
+        plan_json: JSON.stringify(planData),
+        ts: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
 
     loadChatList();
   } catch(e) { console.warn("saveCurrentChat failed:", e); }
@@ -1755,11 +1764,13 @@ async function loadChat(chatId) {
         document.querySelectorAll(".lang-chip").forEach(b => {
           if (b.textContent === langName) b.classList.add("active");
         });
-        const restoreMessages = storedMessages.map(m => ({
-          role: m.role === "doctor" ? "doctor" : "user",
-          text: m.text,
-          text_en: m.text_en || "",
-        }));
+        const restoreMessages = storedMessages
+          .filter(m => m.role !== "plan")
+          .map(m => ({
+            role: m.role === "doctor" ? "doctor" : "user",
+            text: m.text,
+            text_en: m.text_en || "",
+          }));
         await fetch(`${BACKEND_URL}/restore_session`, {
           method: "POST",
           headers: sidHeaders({ "Content-Type": "application/json" }),
@@ -1783,8 +1794,19 @@ async function loadChat(chatId) {
     }
 
     storedMessages.forEach(data => {
-      addMsg(data.role, data.text);
-      if (data.role === "doctor") currentTurns++;
+      if (data.role === "plan") {
+        try {
+          const planData = typeof data.plan_json === "string" ? JSON.parse(data.plan_json) : data.plan_json;
+          const msgEl = document.createElement("div");
+          msgEl.className = "msg doctor";
+          msgEl.innerHTML = `<div class="msg-label">VedicAI</div><div class="bubble">Here's your wellness plan:</div>`;
+          msgEl.appendChild(renderPlanCard(planData));
+          convo.appendChild(msgEl);
+        } catch(e) {}
+      } else {
+        addMsg(data.role, data.text);
+        if (data.role === "doctor") currentTurns++;
+      }
     });
     updateContextBar();
     convo.scrollTop = convo.scrollHeight;
@@ -2451,8 +2473,8 @@ async function processAudio() {
     currentTurns++;
     updateContextBar();
     // Save to Firestore with both local and English text
-    if (reply && reply.local) {
-      saveCurrentChat(transcript, reply.userEn, reply.local, reply.en);
+    if (reply && (reply.local || reply.plan)) {
+      saveCurrentChat(transcript, reply.userEn, reply.local, reply.en, reply.plan);
     }
   }
 }
@@ -2465,6 +2487,7 @@ async function streamChat(userText, myToken) {
   let fullText = "";
   let fullReplyEn = "";
   let userTextEn = "";
+  let planJson = null;
 
   try {
     const res = await fetch(`${BACKEND_URL}/chat_stream`, {
@@ -2551,6 +2574,7 @@ async function streamChat(userText, myToken) {
             doctorBubble.textContent = fullText;
           }
           if (evt.data && evt.data.plan) {
+            planJson = evt.data.plan;
             const planCard = renderPlanCard(evt.data.plan);
             doctorMsgEl.appendChild(planCard);
           }
@@ -2573,7 +2597,7 @@ async function streamChat(userText, myToken) {
     const t = $("thinkingMsg"); if (t) t.remove();
     chatAbortController = null;
   }
-  return { local: fullText, en: fullReplyEn, userEn: userTextEn };
+  return { local: fullText, en: fullReplyEn, userEn: userTextEn, plan: planJson };
 }
 
 function parseSSE(raw) {
