@@ -1103,6 +1103,12 @@ body {
 .member-selector-row {
   max-width: 720px; margin: 0 auto 8px;
   display: flex; align-items: center; gap: 8px;
+  opacity: 0; transform: translateY(5px);
+  transition: opacity 0.24s ease, transform 0.24s ease;
+  pointer-events: none;
+}
+.member-selector-row.ms-visible {
+  opacity: 1; transform: translateY(0); pointer-events: auto;
 }
 .member-selector-label {
   font-size: 11px; font-weight: 600; color: var(--ink-faint);
@@ -1126,7 +1132,12 @@ body {
   background: var(--surface); border: 1px solid var(--rule);
   border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.1);
   min-width: 150px; z-index: 50; overflow: hidden;
-  animation: rise 0.15s ease;
+  transform-origin: bottom left;
+  animation: dropUp 0.18s cubic-bezier(.22,1.15,.36,1) forwards;
+}
+@keyframes dropUp {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
 }
 .member-dropdown-option {
   padding: 9px 14px; font-size: 13px; font-weight: 500;
@@ -1236,7 +1247,7 @@ body {
   </main>
 
   <footer class="footer">
-    <div id="memberSelectorRow" class="member-selector-row" style="display:none">
+    <div id="memberSelectorRow" class="member-selector-row">
       <span class="member-selector-label">For</span>
       <div class="member-dropdown" id="memberDropdown">
         <button class="member-dropdown-btn" id="memberDropdownBtn" onclick="toggleMemberDropdown()">
@@ -2884,11 +2895,12 @@ async function loadFamilyMembers() {
 function renderMemberSelector() {
   const row = document.getElementById("memberSelectorRow");
   if (!row) return;
-  if (!currentUser || !familyMembers.length) {
-    row.style.display = "none";
-    return;
+  const shouldShow = !!(currentUser && familyMembers.length);
+  if (shouldShow && !row.classList.contains("ms-visible")) {
+    requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("ms-visible")));
+  } else if (!shouldShow) {
+    row.classList.remove("ms-visible");
   }
-  row.style.display = "flex";
   const label = document.getElementById("memberDropdownLabel");
   if (label) label.textContent = selectedConsultingFor ? selectedConsultingFor.name : "Self";
 }
@@ -2949,7 +2961,11 @@ function lockMemberSelector() {
   closeMemberDropdown();
   const btn = document.getElementById("memberDropdownBtn");
   if (btn) btn.classList.add("locked");
+  // Fade row down slightly to signal locked state
+  const row = document.getElementById("memberSelectorRow");
+  if (row) row.style.opacity = "0.45";
 }
+
 
 function unlockMemberSelector() {
   selectedConsultingFor = null;
@@ -2957,6 +2973,12 @@ function unlockMemberSelector() {
   if (btn) btn.classList.remove("locked");
   const label = document.getElementById("memberDropdownLabel");
   if (label) label.textContent = "Self";
+  const row = document.getElementById("memberSelectorRow");
+  if (row) {
+    row.style.opacity = "";
+    if (currentUser && familyMembers.length)
+      requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("ms-visible")));
+  }
 }
 
 function renderFamilyMembers() {
