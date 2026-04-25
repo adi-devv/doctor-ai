@@ -1565,7 +1565,10 @@ function onAuthChanged(user) {
   renderSidebarFooter();
   if (user) {
     hideAuthModal();
-    loadChatList();
+    loadChatList().then(() => {
+      const m = location.pathname.match(/^\/chat\/([^/]+)$/);
+      if (m) loadChat(m[1]);
+    });
     checkOnboarding(user);
     loadFamilyMembers();
   } else {
@@ -1577,6 +1580,12 @@ function onAuthChanged(user) {
     showAuthModal();
   }
 }
+
+window.addEventListener("popstate", () => {
+  const m = location.pathname.match(/^\/chat\/([^/]+)$/);
+  if (m && currentUser) loadChat(m[1]);
+  else if (!m) { currentChatId = null; startNewChat(); }
+});
 
 function renderSidebarFooter() {
   const footer = document.getElementById("sidebarFooter");
@@ -1687,6 +1696,7 @@ async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn, p
         updatedAt: now, createdAt: now,
       });
       currentChatId = docRef.id;
+      history.pushState({chatId: currentChatId}, "", `/chat/${currentChatId}`);
     } else {
       await chatsRef.doc(currentChatId).update({ updatedAt: now });
     }
@@ -1750,6 +1760,7 @@ async function loadChat(chatId) {
     const langName = chatData.lang || null;
 
     currentChatId = chatId;
+    history.pushState({chatId}, "", `/chat/${chatId}`);
     currentTurns = 0;
     convo.innerHTML = ""; // clear the load indicator
 
@@ -2020,6 +2031,7 @@ function closeSidebar() {
 function startNewChat() {
   abortEverything();
   currentChatId = null;
+  history.pushState({}, "", "/");
   currentTurns = 0;
   const warn = document.getElementById("ctxWarning");
   if (warn) warn.remove();

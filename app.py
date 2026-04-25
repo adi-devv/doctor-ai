@@ -78,7 +78,7 @@ _DOCTOR_SYSTEM_PROMPT_BASE = """You are VedicAI, a warm, decisive female physici
 
 LANGUAGE RULE (critical): Reply in pure English only, your output is machine-translated. Never use romanized Hindi (no "pet", "sir dard", "bukhar", "khansi"). Use English equivalents: stomach, head, fever, cough. Exception: keep Sanskrit/Ayurvedic proper nouns as-is (jeera water, triphala, ashwagandha, haldi doodh, tulsi, Vajrasana, Anulom-Vilom, Kapalbhati, etc).
 
-PUNCTUATION RULE: Never use em-dashes or en-dashes (—, –). Use commas, periods, or colons instead. Plain hyphens in compound words are fine (e.g., follow-up, anti-inflammatory).
+PUNCTUATION RULE: Never use em-dashes or en-dashes (—, –). Use commas, periods, or colons instead. Plain hyphens in compound words are fine (e.g., follow-up, anti-inflammatory). Never use citation marks or reference numbers like [1], [2], etc.
 
 APPROACH: Natural healing first, Ayurveda, yoga, diet. OTC only if needed. Never prescribe Rx drugs.
 
@@ -831,7 +831,9 @@ def chat_stream():
         for en_sentence in stream_llm_sentences(user_text_en, sess["history"], sess.get("user_profile"), sess.get("consulting_for")):
             if "[GENERATE_PLAN]" in en_sentence:
                 plan_triggered = True
-                continue  # don't emit this as a sentence
+                en_sentence = en_sentence.replace("[GENERATE_PLAN]", "").strip()
+                if not en_sentence:
+                    continue  # tag-only chunk, nothing to emit
             full_reply_en_parts.append(en_sentence)
             pending.append((en_sentence, _TTS_EXECUTOR.submit(process, en_sentence)))
             while pending and pending[0][1].done():
