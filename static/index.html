@@ -1122,7 +1122,8 @@ body {
   transition: border-color 0.15s; white-space: nowrap;
 }
 .member-dropdown-btn:hover { border-color: var(--ink-soft); }
-.member-dropdown-btn.locked { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.member-dropdown-btn.locked { cursor: default; pointer-events: none; border-color: transparent; background: var(--rule-soft); }
+.member-dropdown-btn.locked svg { display: none; }
 .member-dropdown-btn svg { width: 12px; height: 12px; color: var(--ink-faint); transition: transform 0.2s; flex-shrink: 0; }
 .member-dropdown-btn.open svg { transform: rotate(180deg); }
 .member-dropdown-list {
@@ -2925,6 +2926,7 @@ function renderMemberSelector() {
     requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("ms-visible")));
   } else if (!shouldShow) {
     row.classList.remove("ms-visible");
+    row.classList.remove("ms-active");
   }
   const label = document.getElementById("memberDropdownLabel");
   if (label) label.textContent = selectedConsultingFor ? selectedConsultingFor.name : "Self";
@@ -2986,9 +2988,11 @@ function lockMemberSelector() {
   closeMemberDropdown();
   const btn = document.getElementById("memberDropdownBtn");
   if (btn) btn.classList.add("locked");
-  // Fade row down slightly to signal locked state
   const row = document.getElementById("memberSelectorRow");
-  if (row) row.style.opacity = "0.45";
+  if (row && currentUser) {
+    row.style.opacity = "";
+    row.classList.add("ms-visible");
+  }
 }
 
 
