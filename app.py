@@ -74,7 +74,7 @@ def _set_sid_cookie(resp, sid):
 # ────────────────────────────────────────────────────────────────────────────
 # System prompt — Ayurveda + yoga first
 # ────────────────────────────────────────────────────────────────────────────
-DOCTOR_SYSTEM_PROMPT = """You are VedicAI, a warm, decisive female physician in India blending Ayurveda, yoga, and modern medicine. You are on a voice call.
+_DOCTOR_SYSTEM_PROMPT_BASE = """You are VedicAI, a warm, decisive female physician in India blending Ayurveda, yoga, and modern medicine. You are on a voice call.
 
 LANGUAGE RULE (critical): Reply in pure English only, your output is machine-translated. Never use romanized Hindi (no "pet", "sir dard", "bukhar", "khansi"). Use English equivalents: stomach, head, fever, cough. Exception: keep Sanskrit/Ayurvedic proper nouns as-is (jeera water, triphala, ashwagandha, haldi doodh, tulsi, Vajrasana, Anulom-Vilom, Kapalbhati, etc).
 
@@ -109,6 +109,27 @@ REMEDIES (use these):
 OTC (last resort): Paracetamol 500mg (fever >101°F/strong pain), ORS (dehydration), Digene/Eno (acute acidity), Cetirizine (allergy).
 
 TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it" (masculine in Hindi). Never re-introduce yourself after turn 1. No lists or line breaks, this is voice."""
+
+DOCTOR_SYSTEM_PROMPT = _DOCTOR_SYSTEM_PROMPT_BASE  # kept for reference
+
+
+def build_system_prompt(profile=None):
+    prompt = _DOCTOR_SYSTEM_PROMPT_BASE
+    if not profile:
+        return prompt
+    parts = []
+    if profile.get("age"):        parts.append(f"Age: {profile['age']}")
+    if profile.get("gender"):     parts.append(f"Gender: {profile['gender']}")
+    if profile.get("location"):   parts.append(f"Location: {profile['location']}")
+    if profile.get("conditions"): parts.append(f"Conditions: {', '.join(profile['conditions'])}")
+    if profile.get("medications"):parts.append(f"Medications: {', '.join(profile['medications'])}")
+    if profile.get("allergies"):  parts.append(f"Allergies: {', '.join(profile['allergies'])}")
+    if parts:
+        prompt += (
+            "\n\nUSER PROFILE (you already have this — do NOT ask for these again):\n"
+            + " | ".join(parts)
+        )
+    return prompt
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -499,11 +520,11 @@ def tts_all(text, lang_code):
 _EN_SENTENCE_END = re.compile(r"([.!?])\s+")
 
 
-def stream_llm_sentences(english_text, history):
+def stream_llm_sentences(english_text, history, profile=None):
     import time as _time
 
     messages = (
-        [{"role": "system", "content": DOCTOR_SYSTEM_PROMPT}]
+        [{"role": "system", "content": build_system_prompt(profile)}]
         + history[-MAX_HISTORY_TURNS * 2 :]
         + [{"role": "user", "content": english_text}]
     )
@@ -604,6 +625,8 @@ def set_language():
     sess["lang_code"] = lang
     sess["history"] = []
     sess["turn_count"] = 0
+    if data.get("user_profile"):
+        sess["user_profile"] = data["user_profile"]
     greeting_en = "Hello, I'm VedicAI. What's bothering you today?"
     greeting_local = (
         translate(greeting_en, "en-IN", lang) if lang != "en-IN" else greeting_en
@@ -638,6 +661,8 @@ def restore_session():
     lang = data.get("lang_code") or sess.get("lang_code", "hi-IN")
     messages = data.get("messages") or []
     sess["lang_code"] = lang
+    if data.get("user_profile"):
+        sess["user_profile"] = data["user_profile"]
 
     def _to_en(msg):
         # Prefer pre-translated English saved at write time
@@ -789,7 +814,7 @@ def chat_stream():
                 payload["poses"] = poses
             return sse("sentence", payload)
 
-        for en_sentence in stream_llm_sentences(user_text_en, sess["history"]):
+        for en_sentence in stream_llm_sentences(user_text_en, sess["history"], sess.get("user_profile")):
             if "[GENERATE_PLAN]" in en_sentence:
                 plan_triggered = True
                 continue  # don't emit this as a sentence

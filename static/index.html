@@ -523,24 +523,36 @@ body {
   100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
 }
 
-/* THINKING — identical visual to idle, just non-interactive */
+/* THINKING — black pill, centered dots + text */
+
 .mic-btn.thinking {
   background: var(--ink);
-  color: white;
-  cursor: default;
+  border: none;
+  color: rgba(255,255,255,0.6);
   box-shadow: 0 4px 14px rgba(26,26,26,0.15);
-  outline: none;
+  cursor: default;
+  pointer-events: none;
 }
-.mic-btn.thinking .mic-icon,
-.mic-btn.thinking .thinking-spinner { display: none !important; }
-.mic-btn.thinking #micLabel {
-  color: white;
-  font-weight: 500;
+.mic-btn.thinking::before,
+.mic-btn.thinking::after { content: none; }
+.mic-btn.thinking .mic-icon { display: none; }
+.mic-btn.thinking .think-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
 }
-@keyframes thinkSpin { to { transform: rotate(360deg); } }
-.mic-btn:focus { outline: none; }
-.mic-btn:focus-visible { outline: none; }
-
+.mic-btn.thinking .think-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  animation: thinkDot 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.mic-btn.thinking .think-dot:nth-child(2) { animation-delay: 0.15s; }
+.mic-btn.thinking .think-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes thinkDot {
+  0%,80%,100% { opacity: 0.3; transform: scale(1); }
+  40%         { opacity: 1;   transform: scale(1.25); }
+}
 .chat-load-indicator {
   flex: 1;
   display: flex; flex-direction: column;
@@ -902,29 +914,159 @@ body {
 }
 
 
-.user-menu {
-  border-top: 1px solid var(--rule-soft);
-  padding: 6px 8px;
-  animation: rise 0.15s ease;
-}
-.user-menu-item {
-  width: 100%; padding: 9px 12px;
-  border-radius: 8px; border: none;
-  background: none; cursor: pointer;
-  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
-  display: flex; align-items: center; gap: 8px;
-  transition: background 0.12s; color: var(--ink-soft);
-  text-align: left;
-}
-.user-menu-item:hover { background: var(--rule-soft); }
-.user-menu-item.danger:hover { background: #fdecea; color: var(--danger); }
-
 
 .lang-chip.locked {
   opacity: 0.35;
   cursor: not-allowed;
   pointer-events: none;
 }
+
+/* ══════════════════════════════════════════════
+   ACCOUNT MODAL
+══════════════════════════════════════════════ */
+.account-modal { padding: 0; overflow: hidden; max-width: 400px; }
+.account-modal-header {
+  padding: 17px 20px 13px;
+  border-bottom: 1px solid var(--rule-soft);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.account-modal-title {
+  font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600;
+  letter-spacing: -0.3px; color: var(--ink);
+}
+.modal-close-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: var(--rule-soft); color: var(--ink-faint);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.modal-close-btn:hover { background: var(--rule); color: var(--ink); }
+.modal-close-btn svg { width: 13px; height: 13px; }
+.account-user-section {
+  padding: 16px 20px; display: flex; align-items: center; gap: 13px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.account-avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--accent-soft); border: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 600; color: var(--accent);
+  flex-shrink: 0; overflow: hidden;
+}
+.account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.account-user-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.account-user-email { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.account-section { padding: 8px 10px; border-bottom: 1px solid var(--rule-soft); }
+.account-section:last-child { border-bottom: none; }
+.account-section-label {
+  font-size: 10.5px; font-weight: 600; color: var(--ink-faint);
+  text-transform: uppercase; letter-spacing: 0.6px; padding: 4px 10px 5px;
+}
+.account-menu-item {
+  width: 100%; padding: 9px 12px; border-radius: 8px; border: none;
+  background: none; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 500;
+  display: flex; align-items: center; gap: 9px;
+  transition: background 0.12s; color: var(--ink-soft); text-align: left;
+}
+.account-menu-item:hover { background: var(--rule-soft); color: var(--ink); }
+.account-menu-item.danger { color: var(--danger); }
+.account-menu-item.danger:hover { background: #fdecea; }
+.account-menu-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+.family-list { display: flex; flex-direction: column; margin-bottom: 4px; }
+.family-member-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; border-radius: 8px; transition: background 0.12s;
+}
+.family-member-row:hover { background: var(--rule-soft); }
+.family-member-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-soft); border: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--accent); flex-shrink: 0;
+}
+.family-member-info { flex: 1; min-width: 0; }
+.family-member-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+.family-member-meta { font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+.family-member-edit {
+  background: none; border: none; color: var(--ink-faint); cursor: pointer;
+  padding: 4px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.family-member-edit:hover { background: rgba(0,0,0,0.06); color: var(--ink); }
+.family-member-edit svg { width: 13px; height: 13px; }
+.add-member-btn {
+  width: 100%; padding: 8px 12px; border-radius: 8px;
+  border: 1px dashed var(--rule); background: none; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+  transition: border-color 0.15s, color 0.15s; color: var(--ink-faint);
+}
+.add-member-btn:hover { border-color: var(--accent); color: var(--accent); }
+.add-member-btn svg { width: 13px; height: 13px; }
+
+/* ══════════════════════════════════════════════
+   ONBOARDING & FORMS
+══════════════════════════════════════════════ */
+.onboarding-modal, .member-form-modal {
+  max-width: 420px; padding: 26px 26px 22px;
+}
+.onboarding-step { display: none; }
+.onboarding-step.active { display: block; }
+.ob-step-num {
+  font-size: 11px; font-weight: 600; color: var(--ink-faint);
+  text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;
+}
+.ob-title {
+  font-family: 'Fraunces', serif; font-weight: 600; font-size: 21px;
+  letter-spacing: -0.4px; color: var(--ink); margin-bottom: 5px;
+}
+.ob-sub { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 20px; }
+.ob-progress { display: flex; gap: 5px; margin-bottom: 20px; }
+.ob-dot { flex: 1; height: 3px; border-radius: 2px; background: var(--rule); transition: background 0.3s; }
+.ob-dot.done { background: var(--accent); }
+.form-row { display: flex; gap: 12px; }
+.form-field { flex: 1; display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.form-label {
+  font-size: 11.5px; font-weight: 600; color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.form-input, .form-select {
+  padding: 10px 13px; border-radius: 10px;
+  border: 1px solid var(--rule); background: var(--surface);
+  color: var(--ink); font-family: 'Inter', sans-serif; font-size: 14px;
+  outline: none; transition: border-color 0.15s; width: 100%;
+}
+.form-input:focus, .form-select:focus { border-color: var(--accent); }
+.form-select {
+  appearance: none; cursor: pointer; padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 14px;
+}
+.form-hint { font-size: 11px; color: var(--ink-faint); }
+.ob-actions { display: flex; gap: 8px; margin-top: 4px; }
+.ob-btn-primary {
+  flex: 1; padding: 11px; border-radius: 100px; border: none;
+  background: var(--ink); color: white;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.ob-btn-primary:hover { opacity: 0.85; }
+.ob-btn-skip {
+  padding: 11px 16px; border-radius: 100px; border: 1px solid var(--rule);
+  background: none; color: var(--ink-soft);
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.ob-btn-skip:hover { border-color: var(--ink-soft); color: var(--ink); }
+.member-form-title {
+  font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px;
+  letter-spacing: -0.3px; margin-bottom: 18px; color: var(--ink);
+}
+
+/* Thinking state — mic button */
+.mic-btn.thinking .think-label { display: inline; }
 
 </style>
 </head>
@@ -1029,11 +1171,15 @@ body {
           <line x1="12" y1="18" x2="12" y2="22"/>
           <line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
-        <svg class="thinking-spinner" id="thinkingSpinner" style="display:none" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.25)" stroke-width="2.5"/>
-          <circle cx="12" cy="12" r="9" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="14 56"/>
-        </svg>
-        <span id="micLabel">Choose a language first</span>
+        <span id="thinkingGroup" style="display:none; align-items:center; gap:7px;">
+          <span class="think-dots">
+            <span class="think-dot"></span>
+            <span class="think-dot"></span>
+            <span class="think-dot"></span>
+          </span>
+          <span id="micLabel">Thinking...</span>
+        </span>
+        <span id="micLabelStatic">Choose a language first</span>
       </button>
       <button class="end-btn" onclick="endCall()" title="End call" aria-label="End call">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1072,6 +1218,190 @@ body {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ══════════ ACCOUNT / SETTINGS MODAL ══════════ -->
+<div class="modal-overlay hidden" id="accountModal" onclick="if(event.target===this)closeAccountModal()">
+  <div class="modal account-modal">
+    <div class="account-modal-header">
+      <div class="account-modal-title">Account</div>
+      <button class="modal-close-btn" onclick="closeAccountModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div id="accountUserSection" class="account-user-section"></div>
+    <div class="account-section">
+      <div class="account-section-label">Profile</div>
+      <button class="account-menu-item" onclick="openEditProfile()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        Edit profile
+      </button>
+    </div>
+    <div class="account-section">
+      <div class="account-section-label">Family Members</div>
+      <div class="family-list" id="familyList"></div>
+      <button class="add-member-btn" onclick="openMemberModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add family member
+      </button>
+    </div>
+    <div class="account-section">
+      <button class="account-menu-item danger" onclick="doSignOut()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sign out
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ONBOARDING MODAL ══════════ -->
+<div class="modal-overlay hidden" id="onboardingModal">
+  <div class="modal onboarding-modal">
+    <div class="ob-progress">
+      <div class="ob-dot done" id="obDot0"></div>
+      <div class="ob-dot" id="obDot1"></div>
+      <div class="ob-dot" id="obDot2"></div>
+    </div>
+
+    <!-- Step 1: About you -->
+    <div class="onboarding-step active" id="obStep0">
+      <div class="ob-step-num">Step 1 of 3</div>
+      <div class="ob-title">About you</div>
+      <div class="ob-sub">This helps VedicAI give you relevant advice without asking every time.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Age</label>
+          <input type="number" id="obAge" class="form-input" placeholder="e.g. 32" min="1" max="120">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Gender</label>
+          <select id="obGender" class="form-select">
+            <option value="">Select</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">State / City</label>
+        <input type="text" id="obLocation" class="form-input" placeholder="e.g. Maharashtra, Mumbai">
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn-skip" onclick="nextObStep(0,true)">Skip</button>
+        <button class="ob-btn-primary" onclick="nextObStep(0,false)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Health -->
+    <div class="onboarding-step" id="obStep1">
+      <div class="ob-step-num">Step 2 of 3</div>
+      <div class="ob-title">Your health</div>
+      <div class="ob-sub">Any context you share makes consultations more accurate. You can edit this later in settings.</div>
+      <div class="form-field">
+        <label class="form-label">Chronic conditions</label>
+        <input type="text" id="obConditions" class="form-input" placeholder="e.g. Diabetes, Hypertension">
+        <span class="form-hint">Comma-separated</span>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Current medications</label>
+        <input type="text" id="obMeds" class="form-input" placeholder="e.g. Metformin">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Allergies</label>
+        <input type="text" id="obAllergies" class="form-input" placeholder="e.g. Penicillin, Peanuts">
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn-skip" onclick="nextObStep(1,true)">Skip</button>
+        <button class="ob-btn-primary" onclick="nextObStep(1,false)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Family member -->
+    <div class="onboarding-step" id="obStep2">
+      <div class="ob-step-num">Step 3 of 3</div>
+      <div class="ob-title">Add a family member?</div>
+      <div class="ob-sub">Consult for others too. You can skip this and add them later from Settings.</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Name</label>
+          <input type="text" id="obMemberName" class="form-input" placeholder="e.g. Mother">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Age</label>
+          <input type="number" id="obMemberAge" class="form-input" placeholder="e.g. 58" min="1" max="120">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">Gender</label>
+          <select id="obMemberGender" class="form-select">
+            <option value="">Select</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Relation</label>
+          <input type="text" id="obMemberRelation" class="form-input" placeholder="e.g. Mother">
+        </div>
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn-skip" onclick="finishOnboarding(true)">Skip</button>
+        <button class="ob-btn-primary" onclick="finishOnboarding(false)">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ ADD / EDIT MEMBER MODAL ══════════ -->
+<div class="modal-overlay hidden" id="memberModal" onclick="if(event.target===this)closeMemberModal()">
+  <div class="modal member-form-modal">
+    <div class="member-form-title" id="memberModalTitle">Add family member</div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Name</label>
+        <input type="text" id="memberName" class="form-input" placeholder="e.g. Mother">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Age</label>
+        <input type="number" id="memberAge" class="form-input" placeholder="e.g. 58" min="1" max="120">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Gender</label>
+        <select id="memberGender" class="form-select">
+          <option value="">Select</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Relation</label>
+        <input type="text" id="memberRelation" class="form-input" placeholder="e.g. Mother">
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Conditions / notes</label>
+      <input type="text" id="memberConditions" class="form-input" placeholder="e.g. Diabetes, Asthma">
+    </div>
+    <div class="ob-actions">
+      <button class="ob-btn-skip" onclick="closeMemberModal()">Cancel</button>
+      <button class="ob-btn-primary" onclick="saveMember()">Save</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ══════════════════════════════════════════════
@@ -1143,9 +1473,11 @@ function onAuthChanged(user) {
   if (user) {
     hideAuthModal();
     loadChatList();
+    checkOnboarding(user);
   } else {
     renderGuestSidebar();
-    // Only show modal after Firebase confirms no user (not on initial load flicker)
+    userProfile = null;
+    familyMembers = [];
     showAuthModal();
   }
 }
@@ -1158,18 +1490,12 @@ function renderSidebarFooter() {
       ? `<img src="${currentUser.photoURL}" alt=""/>`
       : initial;
     footer.innerHTML = `
-      <div class="user-info" onclick="toggleUserMenu()" style="cursor:pointer;">
+      <div class="user-info" onclick="openAccountModal()" style="cursor:pointer;">
         <div class="user-avatar">${photoHTML}</div>
-        <div class="user-name">${currentUser.displayName || currentUser.email}</div>
-      </div>
-      <div class="user-menu" id="userMenu" style="display:none">
-        <button class="user-menu-item danger" onclick="doSignOut()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          Log out
-        </button>
+        <div class="user-name">${escHtml(currentUser.displayName || currentUser.email)}</div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-faint);flex-shrink:0">
+          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
       </div>`;
   } else {
     footer.innerHTML = `
@@ -1342,7 +1668,7 @@ async function loadChat(chatId) {
           method: "POST",
           headers: sidHeaders({ "Content-Type": "application/json" }),
           credentials: "include",
-          body: JSON.stringify({ lang_code: langCode, messages: restoreMessages }),
+          body: JSON.stringify({ lang_code: langCode, messages: restoreMessages, user_profile: userProfile || undefined }),
         }).catch(() => {});
         setStatus("Connected", "active");
         startTimer();
@@ -1550,27 +1876,12 @@ async function doGoogleSignIn() {
   catch(e) { if (e.code !== "auth/popup-closed-by-user") showToast("Sign-in failed. Please try again."); }
 }
 
-function toggleUserMenu() {
-  const menu = document.getElementById("userMenu");
-  if (!menu) return;
-  const isOpen = menu.style.display !== "none";
-  menu.style.display = isOpen ? "none" : "block";
-  // Close on outside click
-  if (!isOpen) {
-    setTimeout(() => {
-      document.addEventListener("click", function handler(e) {
-        if (!e.target.closest(".sidebar-footer")) {
-          menu.style.display = "none";
-        }
-        document.removeEventListener("click", handler);
-      });
-    }, 10);
-  }
-}
 
 async function doSignOut() {
+  closeAccountModal();
   try { await auth.signOut(); } catch(e) {}
   currentUser = null; currentChatId = null;
+  userProfile = null; familyMembers = [];
   renderSidebarFooter();
   renderGuestSidebar();
 }
@@ -1637,7 +1948,7 @@ const $ = id => document.getElementById(id);
 const statusPill = $("statusPill"), statusText = $("statusText"), timer = $("timer");
 const convo = $("convo"), empty = $("empty");
 const micBtn = $("micBtn"), micLabel = $("micLabel");
-const micIcon = $("micIcon"), thinkingSpinner = $("thinkingSpinner");
+const micIcon = $("micIcon");
 const presence = $("presence"), avatar = $("avatar"), wave = $("wave");
 const toast = $("toast");
 
@@ -1670,21 +1981,25 @@ function showToast(msg) {
  * States: "disabled" | "idle" | "recording" | "thinking"
  */
 function setMicState(s, label) {
-  // Classes
   micBtn.className = "mic-btn" + (
     s === "disabled"  ? " disabled"  :
     s === "recording" ? " recording" :
     s === "thinking"  ? " thinking"  : ""
   );
 
-  // Label
-  micLabel.textContent = label;
+  const thinkingGroup = document.getElementById("thinkingGroup");
+  const staticLabel   = document.getElementById("micLabelStatic");
 
-  thinkingSpinner.style.display = "none";
   if (s === "thinking") {
     micIcon.style.display = "none";
+    thinkingGroup.style.display = "inline-flex";
+    staticLabel.style.display = "none";
+    document.getElementById("micLabel").textContent = label;
   } else {
     micIcon.style.display = "";
+    thinkingGroup.style.display = "none";
+    staticLabel.style.display = "";
+    staticLabel.textContent = label;
     if (s === "recording") {
       micIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>';
     } else {
@@ -1846,7 +2161,7 @@ async function selectLanguage(lang, btn) {
       method: "POST",
       headers: sidHeaders({ "Content-Type": "application/json" }),
       credentials: "include",
-      body: JSON.stringify({ lang_code: lang.code }),
+      body: JSON.stringify({ lang_code: lang.code, user_profile: userProfile || undefined }),
     });
     data = await res.json();
   } catch (e) {
@@ -1914,7 +2229,7 @@ async function changeLanguage(lang, btn) {
 
 // ─── Recording ───
 async function toggleRecording() {
-  if (!selectedLang || state === "thinking") return;
+  if (!selectedLang || state === "thinking" || state === "streaming") return;
   // Block if context limit reached
   if (currentTurns >= MAX_TURNS_PER_CHAT) { showToast("Chat limit reached. Start a new chat."); return; }
 
@@ -1989,7 +2304,7 @@ function stopRecording() {
   silenceTimer = maxTimer = null;
   if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
   try { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(t => t.stop()); } catch(e){}
-  setMicState("thinking", "Thinking");
+  setMicState("thinking", "Thinking...");
 }
 
 // ─── Process audio + streaming chat ───
@@ -2113,13 +2428,23 @@ async function streamChat(userText, myToken) {
           userTextEn  = evt.data.user_en  || "";
           fullReplyEn = evt.data.reply_en || "";
         } else if (evt.event === "plan") {
-          // Render plan card after the last doctor message
-          const planCard = renderPlanCard(evt.data.plan);
-          const lastMsg = convo.querySelector(".msg.doctor:last-child");
-          if (lastMsg) {
-            lastMsg.appendChild(planCard);
-          } else {
-            convo.appendChild(planCard);
+          const thinkEl = $("thinkingMsg"); if (thinkEl) thinkEl.remove();
+          if (!doctorMsgEl) {
+            doctorMsgEl = document.createElement("div");
+            doctorMsgEl.className = "msg doctor";
+            doctorMsgEl.innerHTML = `
+              <div class="msg-label">VedicAI</div>
+              <div class="bubble"></div>
+              <div class="pose-strip" style="display:none"></div>`;
+            convo.appendChild(doctorMsgEl);
+            doctorBubble = doctorMsgEl.querySelector(".bubble");
+            doctorMsgEl._shownPoses = new Set();
+            fullText = "Here's your wellness plan:";
+            doctorBubble.textContent = fullText;
+          }
+          if (evt.data && evt.data.plan) {
+            const planCard = renderPlanCard(evt.data.plan);
+            doctorMsgEl.appendChild(planCard);
           }
           convo.scrollTop = convo.scrollHeight;
         } else if (evt.event === "done") {
@@ -2254,6 +2579,216 @@ function resetToHome() {
       <div class="empty-sub">Choose your language below to start a voice consultation, blending Ayurveda, yoga, and modern medicine.</div>
       <div class="empty-arrow">↓</div>
     </div>`;
+}
+
+// ══════════════════════════════════════════════
+//  PROFILE & ONBOARDING
+// ══════════════════════════════════════════════
+let userProfile = null;
+let familyMembers = [];
+let editingMemberId = null;
+
+async function checkOnboarding(user) {
+  if (!db) return;
+  try {
+    const doc = await db.collection("users").doc(user.uid)
+      .collection("profile").doc("main").get();
+    if (!doc.exists) {
+      showOnboarding();
+    } else {
+      userProfile = doc.data();
+    }
+  } catch(e) {}
+}
+
+function showOnboarding() {
+  document.getElementById("onboardingModal").classList.remove("hidden");
+  setObStep(0);
+}
+
+function setObStep(step) {
+  document.querySelectorAll(".onboarding-step").forEach((el, i) => {
+    el.classList.toggle("active", i === step);
+  });
+  document.querySelectorAll(".ob-dot").forEach((dot, i) => {
+    dot.classList.toggle("done", i <= step);
+  });
+}
+
+function nextObStep(currentStep, skip) {
+  if (!userProfile) userProfile = {};
+  if (!skip) {
+    if (currentStep === 0) {
+      const age = document.getElementById("obAge").value;
+      const gender = document.getElementById("obGender").value;
+      const location = document.getElementById("obLocation").value.trim();
+      if (age) userProfile.age = parseInt(age);
+      if (gender) userProfile.gender = gender;
+      if (location) userProfile.location = location;
+    } else if (currentStep === 1) {
+      const cond = document.getElementById("obConditions").value.trim();
+      const meds = document.getElementById("obMeds").value.trim();
+      const allg = document.getElementById("obAllergies").value.trim();
+      if (cond) userProfile.conditions = cond.split(",").map(s => s.trim()).filter(Boolean);
+      if (meds) userProfile.medications = meds.split(",").map(s => s.trim()).filter(Boolean);
+      if (allg) userProfile.allergies = allg.split(",").map(s => s.trim()).filter(Boolean);
+    }
+  }
+  setObStep(currentStep + 1);
+}
+
+async function finishOnboarding(skip) {
+  if (!skip) {
+    const name = document.getElementById("obMemberName").value.trim();
+    const age = document.getElementById("obMemberAge").value;
+    const gender = document.getElementById("obMemberGender").value;
+    const relation = document.getElementById("obMemberRelation").value.trim();
+    if (name && currentUser && db) {
+      try {
+        await db.collection("users").doc(currentUser.uid).collection("family").add({
+          name, age: age ? parseInt(age) : null, gender, relation,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch(e) {}
+    }
+  }
+  if (currentUser && db) {
+    if (!userProfile) userProfile = {};
+    userProfile.onboardingDone = true;
+    try {
+      await db.collection("users").doc(currentUser.uid)
+        .collection("profile").doc("main").set(userProfile, { merge: true });
+    } catch(e) {}
+  }
+  document.getElementById("onboardingModal").classList.add("hidden");
+}
+
+function openEditProfile() {
+  closeAccountModal();
+  if (userProfile) {
+    document.getElementById("obAge").value = userProfile.age || "";
+    document.getElementById("obGender").value = userProfile.gender || "";
+    document.getElementById("obLocation").value = userProfile.location || "";
+    document.getElementById("obConditions").value = (userProfile.conditions || []).join(", ");
+    document.getElementById("obMeds").value = (userProfile.medications || []).join(", ");
+    document.getElementById("obAllergies").value = (userProfile.allergies || []).join(", ");
+  }
+  document.getElementById("onboardingModal").classList.remove("hidden");
+  setObStep(0);
+}
+
+// ══════════════════════════════════════════════
+//  ACCOUNT MODAL
+// ══════════════════════════════════════════════
+function openAccountModal() {
+  if (!currentUser) return;
+  const initial = (currentUser.displayName || currentUser.email || "U")[0].toUpperCase();
+  const photoHTML = currentUser.photoURL
+    ? `<img src="${currentUser.photoURL}" alt=""/>`
+    : initial;
+  document.getElementById("accountUserSection").innerHTML = `
+    <div class="account-avatar">${photoHTML}</div>
+    <div>
+      <div class="account-user-name">${escHtml(currentUser.displayName || "")}</div>
+      <div class="account-user-email">${escHtml(currentUser.email || "")}</div>
+    </div>`;
+  document.getElementById("accountModal").classList.remove("hidden");
+  loadFamilyMembers();
+}
+
+function closeAccountModal() {
+  document.getElementById("accountModal").classList.add("hidden");
+}
+
+async function loadFamilyMembers() {
+  if (!currentUser || !db) return;
+  try {
+    const snap = await db.collection("users").doc(currentUser.uid)
+      .collection("family").orderBy("createdAt", "asc").get();
+    familyMembers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    familyMembers = [];
+  }
+  renderFamilyMembers();
+}
+
+function renderFamilyMembers() {
+  const list = document.getElementById("familyList");
+  if (!list) return;
+  if (!familyMembers.length) {
+    list.innerHTML = `<div style="font-size:12.5px;color:var(--ink-faint);padding:4px 12px 6px;">No family members added yet.</div>`;
+    return;
+  }
+  list.innerHTML = familyMembers.map(m => {
+    const initial = (m.name || "?")[0].toUpperCase();
+    const parts = [m.relation, m.age ? m.age + " yrs" : "", m.gender].filter(Boolean);
+    const meta = parts.join(" · ");
+    return `<div class="family-member-row">
+      <div class="family-member-avatar">${escHtml(initial)}</div>
+      <div class="family-member-info">
+        <div class="family-member-name">${escHtml(m.name)}</div>
+        ${meta ? `<div class="family-member-meta">${escHtml(meta)}</div>` : ""}
+      </div>
+      <button class="family-member-edit" onclick="event.stopPropagation();openMemberModal('${m.id}')" title="Edit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join("");
+}
+
+function openMemberModal(memberId) {
+  editingMemberId = memberId || null;
+  document.getElementById("memberModalTitle").textContent = memberId ? "Edit family member" : "Add family member";
+  if (memberId) {
+    const m = familyMembers.find(f => f.id === memberId);
+    if (m) {
+      document.getElementById("memberName").value = m.name || "";
+      document.getElementById("memberAge").value = m.age || "";
+      document.getElementById("memberGender").value = m.gender || "";
+      document.getElementById("memberRelation").value = m.relation || "";
+      document.getElementById("memberConditions").value = m.conditions || "";
+    }
+  } else {
+    ["memberName","memberAge","memberRelation","memberConditions"].forEach(id => {
+      document.getElementById(id).value = "";
+    });
+    document.getElementById("memberGender").value = "";
+  }
+  document.getElementById("memberModal").classList.remove("hidden");
+}
+
+function closeMemberModal() {
+  document.getElementById("memberModal").classList.add("hidden");
+  editingMemberId = null;
+}
+
+async function saveMember() {
+  if (!currentUser || !db) return;
+  const name = document.getElementById("memberName").value.trim();
+  if (!name) { showToast("Please enter a name"); return; }
+  const data = {
+    name,
+    age: parseInt(document.getElementById("memberAge").value) || null,
+    gender: document.getElementById("memberGender").value,
+    relation: document.getElementById("memberRelation").value.trim(),
+    conditions: document.getElementById("memberConditions").value.trim(),
+  };
+  try {
+    const ref = db.collection("users").doc(currentUser.uid).collection("family");
+    if (editingMemberId) {
+      await ref.doc(editingMemberId).update(data);
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await ref.add(data);
+    }
+    closeMemberModal();
+    loadFamilyMembers();
+    showToast(editingMemberId ? "Member updated" : "Member added");
+  } catch(e) {
+    showToast("Couldn't save. Try again.");
+  }
 }
 
 // ─── Boot ───
