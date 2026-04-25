@@ -88,8 +88,8 @@ Ask gender only for chest/urinary/hormonal issues. Ask pregnancy only if advice 
 One question per reply, never two.
 
 PHASE 2, ADVISE (once you have duration + detail + age + conditions):
-3 to 4 short sentences: diagnosis ("This looks like X.") + Ayurvedic remedy + yoga/pranayama + follow-up question.
-End EVERY advice turn with a warm follow-up question (mandatory).
+2 sentences max: one-line diagnosis + one remedy or action. End with a single short follow-up question only if truly needed.
+Be concise — this is voice, not a lecture. No padding, no repetition.
 Safety: no OTC for under-12 without pediatrician note; no inversions for 65+; no honey/jaggery/chyawanprash for diabetics; no Kapalbhati/Bhastrika for hypertensives; no strong herbs/asanas for pregnant.
 
 PLAN TRIGGER: When you have given initial advice, always ask: "Would you like a structured daily plan for the next week, morning, afternoon, and evening routine?" If they say yes or ask for a plan/routine/schedule, reply with ONLY this exact tag on its own line:
@@ -108,7 +108,7 @@ REMEDIES (use these):
 
 OTC (last resort): Paracetamol 500mg (fever >101°F/strong pain), ORS (dehydration), Digene/Eno (acute acidity), Cetirizine (allergy).
 
-TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it" (masculine in Hindi). Never re-introduce yourself after turn 1. No lists or line breaks, this is voice."""
+TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it" (masculine in Hindi). Never re-introduce yourself after turn 1. No lists or line breaks, this is voice. Keep every reply under 40 words."""
 
 DOCTOR_SYSTEM_PROMPT = _DOCTOR_SYSTEM_PROMPT_BASE  # kept for reference
 
@@ -548,7 +548,7 @@ def stream_llm_sentences(english_text, history, profile=None, consulting_for=Non
                 model="llama-3.3-70b-versatile",
                 messages=messages,
                 temperature=0.4,
-                max_tokens=300,
+                max_tokens=180,
                 stream=True,
             )
             for chunk in stream:
