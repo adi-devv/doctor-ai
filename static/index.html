@@ -524,11 +524,9 @@ body {
 }
 
 /* THINKING — black pill, centered dots + text */
-
 .mic-btn.thinking {
   background: var(--ink);
   border: none;
-  color: rgba(255,255,255,0.6);
   box-shadow: 0 4px 14px rgba(26,26,26,0.15);
   cursor: default;
   pointer-events: none;
@@ -536,23 +534,23 @@ body {
 .mic-btn.thinking::before,
 .mic-btn.thinking::after { content: none; }
 .mic-btn.thinking .mic-icon { display: none; }
-.mic-btn.thinking .think-dots {
-  display: inline-flex;
-  gap: 4px;
+#thinkingGroup {
+  display: none;
   align-items: center;
+  gap: 8px;
 }
-.mic-btn.thinking .think-dot {
-  width: 5px; height: 5px; border-radius: 50%;
+.think-dot {
+  width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
   background: rgba(255,255,255,0.5);
   animation: thinkDot 1.2s ease-in-out infinite;
-  flex-shrink: 0;
 }
-.mic-btn.thinking .think-dot:nth-child(2) { animation-delay: 0.15s; }
-.mic-btn.thinking .think-dot:nth-child(3) { animation-delay: 0.3s; }
+.think-dot:nth-child(2) { animation-delay: 0.2s; }
+.think-dot:nth-child(3) { animation-delay: 0.4s; }
 @keyframes thinkDot {
-  0%,80%,100% { opacity: 0.3; transform: scale(1); }
-  40%         { opacity: 1;   transform: scale(1.25); }
+  0%,80%,100% { opacity: 0.25; transform: scale(1); }
+  40%         { opacity: 1;    transform: scale(1.3); }
 }
+#micLabel { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.7); }
 .chat-load-indicator {
   flex: 1;
   display: flex; flex-direction: column;
@@ -1150,8 +1148,6 @@ body {
 .member-dropdown-option svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
 
 
-/* Thinking state — mic button */
-.mic-btn.thinking .think-label { display: inline; }
 
 </style>
 </head>
@@ -1268,12 +1264,10 @@ body {
           <line x1="12" y1="18" x2="12" y2="22"/>
           <line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
-        <span id="thinkingGroup" style="display:none; align-items:center; gap:7px;">
-          <span class="think-dots">
-            <span class="think-dot"></span>
-            <span class="think-dot"></span>
-            <span class="think-dot"></span>
-          </span>
+        <span id="thinkingGroup">
+          <span class="think-dot"></span>
+          <span class="think-dot"></span>
+          <span class="think-dot"></span>
           <span id="micLabel">Thinking...</span>
         </span>
         <span id="micLabelStatic">Choose a language first</span>
@@ -2094,7 +2088,7 @@ function setMicState(s, label) {
 
   if (s === "thinking") {
     micIcon.style.display = "none";
-    thinkingGroup.style.display = "inline-flex";
+    thinkingGroup.style.display = "flex";
     staticLabel.style.display = "none";
     document.getElementById("micLabel").textContent = label;
   } else {
