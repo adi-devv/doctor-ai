@@ -10,15 +10,14 @@ import logging
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
-from groq import Groq
+import anthropic
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 
 load_dotenv()
 
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-groq_client = Groq(api_key=GROQ_API_KEY)
+anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_HISTORY_TURNS = 12  # = MAX_TURNS_PER_CHAT in frontend (must stay in sync)
@@ -550,49 +549,51 @@ def stream_llm_sentences(english_text, history, profile=None, consulting_for=Non
     import time as _time
 
     messages = (
-        [{"role": "system", "content": build_system_prompt(profile, consulting_for)}]
-        + history[-MAX_HISTORY_TURNS * 2 :]
+        history[-MAX_HISTORY_TURNS * 2:]
         + [{"role": "user", "content": english_text}]
     )
+    system_prompt = build_system_prompt(profile, consulting_for)
     max_retries = 3
     for attempt in range(max_retries):
         buffer = ""
         try:
-            stream = groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+            with anthropic_client.messages.stream(
+                model="claude-haiku-4-5",
+                max_tokens=300,
+                system=[{
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }],
                 messages=messages,
-                temperature=0.4,
-                max_tokens=250,
-                stream=True,
-            )
-            for chunk in stream:
-                delta = chunk.choices[0].delta.content or ""
-                if not delta:
-                    continue
-                buffer += delta
-                while True:
-                    m = _EN_SENTENCE_END.search(buffer)
-                    if not m:
-                        break
-                    end = m.end()
-                    sentence = buffer[:end].strip()
-                    buffer = buffer[end:]
-                    if sentence:
-                        yield sentence
+            ) as stream:
+                for text in stream.text_stream:
+                    buffer += text
+                    while True:
+                        m = _EN_SENTENCE_END.search(buffer)
+                        if not m:
+                            break
+                        end = m.end()
+                        sentence = buffer[:end].strip()
+                        buffer = buffer[end:]
+                        if sentence:
+                            yield sentence
             if buffer.strip():
                 yield buffer.strip()
             return  # success
-        except Exception as e:
-            is_rate_limit = "429" in str(e) or "rate" in str(e).lower()
-            log.warning(
-                f"groq attempt {attempt+1}/{max_retries} failed [{type(e).__name__}]: {e}"
-            )
-            if is_rate_limit and attempt < max_retries - 1:
-                wait = 4**attempt  # 1s, 4s, 16s
+        except anthropic.RateLimitError as e:
+            log.warning(f"anthropic rate limit attempt {attempt+1}/{max_retries}: {e}")
+            if attempt < max_retries - 1:
+                wait = 4 ** attempt
                 log.info(f"Rate limited — retrying in {wait}s")
                 _time.sleep(wait)
                 continue
-            log.error(f"groq failed after {attempt+1} attempts")
+            log.error("anthropic rate limit — giving up")
+            yield "I'm having trouble responding right now. Please try again in a moment."
+            return
+        except Exception as e:
+            log.warning(f"anthropic attempt {attempt+1}/{max_retries} failed [{type(e).__name__}]: {e}")
+            log.error(f"anthropic failed after {attempt+1} attempts")
             yield "I'm having trouble responding right now. Please try again in a moment."
             return
 
@@ -603,20 +604,16 @@ def stream_llm_sentences(english_text, history, profile=None, consulting_for=Non
 def generate_plan_json(conversation_summary, lang):
     """Call LLM once to generate a structured plan. Returns parsed dict or None."""
     try:
-        resp = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": PLAN_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"Patient conversation summary: {conversation_summary}\n\nGenerate the recovery plan JSON.",
-                },
-            ],
-            temperature=0.3,
+        resp = anthropic_client.messages.create(
+            model="claude-haiku-4-5",
             max_tokens=800,
+            system=PLAN_SYSTEM_PROMPT,
+            messages=[{
+                "role": "user",
+                "content": f"Patient conversation summary: {conversation_summary}\n\nGenerate the recovery plan JSON.",
+            }],
         )
-        raw = resp.choices[0].message.content or ""
-        # Strip any accidental markdown fences
+        raw = resp.content[0].text if resp.content else ""
         raw = re.sub(r"```json|```", "", raw).strip()
         return json.loads(raw)
     except Exception as e:
