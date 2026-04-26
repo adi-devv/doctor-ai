@@ -400,8 +400,28 @@ body {
   padding: 13px 16px;
   background: var(--doctor-bubble); border: 1px solid var(--rule);
   border-radius: 16px; border-top-left-radius: 4px;
-  font-size: 14px; color: var(--ink-faint);
+  display: flex; align-items: center; gap: 6px;
 }
+.thinking .think-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--ink-faint);
+  animation: thinkDot 1.2s ease-in-out infinite;
+}
+.thinking .think-dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking .think-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes thinkDot {
+  0%,80%,100% { opacity: 0.25; transform: scale(1); }
+  40%          { opacity: 1;    transform: scale(1.25); }
+}
+.replay-btn {
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 6px; align-self: flex-start;
+  background: none; border: none; cursor: pointer;
+  color: var(--ink-faint); font-size: 12px; padding: 0;
+  transition: color 0.15s;
+}
+.replay-btn:hover { color: var(--accent); }
+.replay-btn svg { width: 15px; height: 15px; }
 
 .empty {
   flex: 1; display: flex; flex-direction: column;
@@ -847,8 +867,8 @@ body {
 .plan-slots { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .plan-slot {
   display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 10px;
+  grid-template-columns: 76px 1fr;
+  gap: 16px;
   align-items: baseline;
 }
 .plan-slot-label {
@@ -2133,7 +2153,7 @@ function addThinking() {
   const msg = document.createElement("div");
   msg.className = "msg doctor";
   msg.id = "thinkingMsg";
-  msg.innerHTML = `<div class="msg-label">VedicAI</div><div class="thinking">Thinking…</div>`;
+  msg.innerHTML = `<div class="msg-label">VedicAI</div><div class="thinking"><span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span></div>`;
   convo.appendChild(msg);
   convo.scrollTop = convo.scrollHeight;
 }
@@ -2522,7 +2542,11 @@ async function streamChat(userText, myToken) {
           }
 
           convo.scrollTop = convo.scrollHeight;
-          if (evt.data.audio) enqueueAudio(evt.data.audio);
+          if (evt.data.audio) {
+            enqueueAudio(evt.data.audio);
+            if (!doctorMsgEl._audioChunks) doctorMsgEl._audioChunks = [];
+            doctorMsgEl._audioChunks.push(evt.data.audio);
+          }
           if (evt.data.emergency) addEmergencyBanner();
         } else if (evt.event === "exchange_en") {
           userTextEn  = evt.data.user_en  || "";
@@ -2550,6 +2574,15 @@ async function streamChat(userText, myToken) {
           convo.scrollTop = convo.scrollHeight;
         } else if (evt.event === "done") {
           if (doctorBubble) doctorBubble.classList.remove("streaming");
+          if (doctorMsgEl && doctorMsgEl._audioChunks && doctorMsgEl._audioChunks.length) {
+            const btn = document.createElement("button");
+            btn.className = "replay-btn";
+            btn.title = "Replay audio";
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg><span>Replay</span>`;
+            const chunks = doctorMsgEl._audioChunks.slice();
+            btn.onclick = () => { stopAllAudio(); chunks.forEach(enqueueAudio); };
+            doctorMsgEl.appendChild(btn);
+          }
         } else if (evt.event === "error") {
           showToast("Doctor is offline. Try again.");
         }
@@ -2601,6 +2634,8 @@ function endCall() {
 }
 
 
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
 // ─── Plan card renderer ───
 function renderPlanCard(plan) {
   const card = document.createElement("div");
@@ -2625,12 +2660,12 @@ function renderPlanCard(plan) {
       if (!items || !items.length) return "";
       return `<div class="plan-slot">
         <div class="plan-slot-label">${label}</div>
-        <div class="plan-slot-items">${items.map(it => `<div class="plan-slot-item">${escHtml(it)}</div>`).join("")}</div>
+        <div class="plan-slot-items">${items.map(it => `<div class="plan-slot-item">${escHtml(cap(it))}</div>`).join("")}</div>
       </div>`;
     }).join("");
 
-    const dietHtml  = (p.diet  || []).map(d => `<span class="plan-tag">${escHtml(d)}</span>`).join("");
-    const avoidHtml = (p.avoid || []).map(a => `<span class="plan-tag avoid">${escHtml(a)}</span>`).join("");
+    const dietHtml  = (p.diet  || []).map(d => `<span class="plan-tag">${escHtml(cap(d))}</span>`).join("");
+    const avoidHtml = (p.avoid || []).map(a => `<span class="plan-tag avoid">${escHtml(cap(a))}</span>`).join("");
     const milestoneText = p.milestone || plan.milestone;
 
     return `<div class="plan-phase${i===0?" active":""}" data-phase="${i}">
