@@ -1056,6 +1056,19 @@ body {
 .ob-progress { display: flex; gap: 5px; margin-bottom: 20px; }
 .ob-dot { flex: 1; height: 3px; border-radius: 2px; background: var(--rule); transition: background 0.3s; }
 .ob-dot.done { background: var(--accent); }
+.dosha-quiz { display: flex; flex-direction: column; gap: 14px; margin-bottom: 4px; }
+.dosha-q-label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 7px; }
+.dosha-opts { display: flex; flex-direction: column; gap: 5px; }
+.dosha-opt {
+  text-align: left; padding: 9px 13px;
+  border: 1.5px solid var(--rule); border-radius: 10px;
+  background: var(--surface); color: var(--ink-soft);
+  font-size: 13px; line-height: 1.4; cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.dosha-opt:hover { border-color: var(--ink-faint); color: var(--ink); }
+.dosha-opt.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
 .form-row { display: flex; gap: 12px; }
 .form-field { flex: 1; display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .form-label {
@@ -1362,6 +1375,10 @@ body {
       <div class="ob-step-num">Step 1 of 3</div>
       <div class="ob-title">About you</div>
       <div class="ob-sub">This helps VedicAI give you relevant advice without asking every time.</div>
+      <div class="form-field">
+        <label class="form-label">Name</label>
+        <input type="text" id="obName" class="form-input" placeholder="Your name">
+      </div>
       <div class="form-row">
         <div class="form-field">
           <label class="form-label">Age</label>
@@ -1405,59 +1422,46 @@ body {
         <label class="form-label">Allergies</label>
         <input type="text" id="obAllergies" class="form-input" placeholder="e.g. Penicillin, Peanuts">
       </div>
-      <div class="form-field">
-        <label class="form-label">Body type <span style="font-weight:400;color:var(--ink-faint)">(helps personalise Ayurvedic advice)</span></label>
-        <select id="obDosha" class="form-select">
-          <option value="">Not sure / skip</option>
-          <option value="Vata">Vata — Anxious, light, irregular digestion, sensitive to cold</option>
-          <option value="Pitta">Pitta — Hot, sharp, easily irritable, strong appetite</option>
-          <option value="Kapha">Kapha — Calm, slow, prone to heaviness and congestion</option>
-        </select>
-      </div>
       <div class="ob-actions">
         <button class="ob-btn-skip" onclick="nextObStep(1,true)">Skip</button>
         <button class="ob-btn-primary" onclick="nextObStep(1,false)">Continue</button>
       </div>
     </div>
 
-    <!-- Step 3: Family member -->
+    <!-- Step 3: Body type quiz -->
     <div class="onboarding-step" id="obStep2">
       <div class="ob-step-num">Step 3 of 3</div>
-      <div class="ob-title">Add a family member?</div>
-      <div class="ob-sub">Consult for others too. You can skip this and add them later from Settings.</div>
-      <div class="form-row">
-        <div class="form-field">
-          <label class="form-label">Name</label>
-          <input type="text" id="obMemberName" class="form-input" placeholder="e.g. Mother">
+      <div class="ob-title">Your body type</div>
+      <div class="ob-sub">3 quick questions — we'll determine your Ayurvedic type for personalised advice.</div>
+      <div class="dosha-quiz">
+        <div class="dosha-q">
+          <div class="dosha-q-label">1. How would you describe your build?</div>
+          <div class="dosha-opts">
+            <button class="dosha-opt" data-type="vata" onclick="selectDoshaOpt(this)">Light and thin, quick to move but tires easily</button>
+            <button class="dosha-opt" data-type="pitta" onclick="selectDoshaOpt(this)">Medium build, warm, muscular and driven</button>
+            <button class="dosha-opt" data-type="kapha" onclick="selectDoshaOpt(this)">Broad and solid, calm and slow to tire</button>
+          </div>
         </div>
-        <div class="form-field">
-          <label class="form-label">Age</label>
-          <input type="number" id="obMemberAge" class="form-input" placeholder="e.g. 58" min="1" max="120">
+        <div class="dosha-q">
+          <div class="dosha-q-label">2. How is your digestion?</div>
+          <div class="dosha-opts">
+            <button class="dosha-opt" data-type="vata" onclick="selectDoshaOpt(this)">Irregular — changes from day to day</button>
+            <button class="dosha-opt" data-type="pitta" onclick="selectDoshaOpt(this)">Strong and sharp — gets hungry often</button>
+            <button class="dosha-opt" data-type="kapha" onclick="selectDoshaOpt(this)">Slow and steady — feels heavy after meals</button>
+          </div>
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label class="form-label">Gender</label>
-          <select id="obMemberGender" class="form-select">
-            <option value="">Select</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
+        <div class="dosha-q">
+          <div class="dosha-q-label">3. Under stress you tend to...</div>
+          <div class="dosha-opts">
+            <button class="dosha-opt" data-type="vata" onclick="selectDoshaOpt(this)">Worry and feel anxious</button>
+            <button class="dosha-opt" data-type="pitta" onclick="selectDoshaOpt(this)">Get irritable or frustrated</button>
+            <button class="dosha-opt" data-type="kapha" onclick="selectDoshaOpt(this)">Withdraw and go quiet</button>
+          </div>
         </div>
-        <div class="form-field">
-          <label class="form-label">Relation</label>
-          <input type="text" id="obMemberRelation" class="form-input" placeholder="e.g. Mother">
-        </div>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Health conditions</label>
-        <input type="text" id="obMemberConditions" class="form-input" placeholder="e.g. Diabetes, Hypertension">
-        <span class="form-hint">Comma-separated</span>
       </div>
       <div class="ob-actions">
-        <button class="ob-btn-skip" onclick="finishOnboarding(true)">Skip</button>
-        <button class="ob-btn-primary" onclick="finishOnboarding(false)">Done</button>
+        <button class="ob-btn-skip" onclick="finishDoshaQuiz(true)">Skip</button>
+        <button class="ob-btn-primary" onclick="finishDoshaQuiz(false)">Done</button>
       </div>
     </div>
   </div>
@@ -1597,14 +1601,15 @@ window.addEventListener("popstate", () => {
 function renderSidebarFooter() {
   const footer = document.getElementById("sidebarFooter");
   if (currentUser) {
-    const initial = (currentUser.displayName || currentUser.email || "U")[0].toUpperCase();
+    const displayName = (userProfile && userProfile.name) || currentUser.displayName || currentUser.email || "";
+    const initial = displayName[0].toUpperCase();
     const photoHTML = currentUser.photoURL
       ? `<img src="${currentUser.photoURL}" alt=""/>`
       : initial;
     footer.innerHTML = `
       <div class="user-info" onclick="openAccountModal()" style="cursor:pointer;">
         <div class="user-avatar">${photoHTML}</div>
-        <div class="user-name">${escHtml(currentUser.displayName || currentUser.email)}</div>
+        <div class="user-name">${escHtml(displayName)}</div>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-faint);flex-shrink:0">
           <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
         </svg>
@@ -2752,6 +2757,15 @@ async function checkOnboarding(user) {
 
 function showOnboarding() {
   obIsEditMode = false;
+  const nameEl = document.getElementById("obName");
+  if (nameEl && currentUser && !nameEl.value) {
+    if (currentUser.displayName) {
+      nameEl.value = currentUser.displayName;
+    } else if (currentUser.email) {
+      const local = currentUser.email.split("@")[0].replace(/[._\-+]+/g, " ");
+      nameEl.value = local.replace(/\b\w/g, c => c.toUpperCase());
+    }
+  }
   document.getElementById("onboardingModal").classList.remove("hidden");
   setObStep(0);
 }
@@ -2772,9 +2786,11 @@ function nextObStep(currentStep, skip) {
   if (!userProfile) userProfile = {};
   if (!skip) {
     if (currentStep === 0) {
+      const name = document.getElementById("obName").value.trim();
       const age = document.getElementById("obAge").value;
       const gender = document.getElementById("obGender").value;
       const location = document.getElementById("obLocation").value.trim();
+      if (name) userProfile.name = name;
       if (age) userProfile.age = parseInt(age);
       if (gender) userProfile.gender = gender;
       if (location) userProfile.location = location;
@@ -2782,11 +2798,9 @@ function nextObStep(currentStep, skip) {
       const cond = document.getElementById("obConditions").value.trim();
       const meds = document.getElementById("obMeds").value.trim();
       const allg = document.getElementById("obAllergies").value.trim();
-      const dosha = document.getElementById("obDosha").value;
       if (cond) userProfile.conditions = cond.split(",").map(s => s.trim()).filter(Boolean);
       if (meds) userProfile.medications = meds.split(",").map(s => s.trim()).filter(Boolean);
       if (allg) userProfile.allergies = allg.split(",").map(s => s.trim()).filter(Boolean);
-      if (dosha) userProfile.dosha = dosha; else delete userProfile.dosha;
     }
   }
   if (currentStep === 1 && obIsEditMode) {
@@ -2811,26 +2825,22 @@ async function finishProfileEdit() {
   }
 }
 
-async function finishOnboarding(skip) {
+function selectDoshaOpt(btn) {
+  btn.closest(".dosha-opts").querySelectorAll(".dosha-opt").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+}
+
+async function finishDoshaQuiz(skip) {
+  if (!userProfile) userProfile = {};
   if (!skip) {
-    const name = document.getElementById("obMemberName").value.trim();
-    const age = document.getElementById("obMemberAge").value;
-    const gender = document.getElementById("obMemberGender").value;
-    const relation = document.getElementById("obMemberRelation").value.trim();
-    const conditions = document.getElementById("obMemberConditions").value.trim();
-    if (name && currentUser && db) {
-      try {
-        await db.collection("users").doc(currentUser.uid).collection("family").add({
-          name, age: age ? parseInt(age) : null, gender, relation, conditions,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-        loadFamilyMembers();
-      } catch(e) {}
-    }
+    const selected = document.querySelectorAll("#obStep2 .dosha-opt.selected");
+    const scores = { vata: 0, pitta: 0, kapha: 0 };
+    selected.forEach(b => { if (b.dataset.type in scores) scores[b.dataset.type]++; });
+    const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] > 0) userProfile.dosha = top[0].charAt(0).toUpperCase() + top[0].slice(1);
   }
+  userProfile.onboardingDone = true;
   if (currentUser && db) {
-    if (!userProfile) userProfile = {};
-    userProfile.onboardingDone = true;
     try {
       await db.collection("users").doc(currentUser.uid)
         .collection("profile").doc("main").set(userProfile, { merge: true });
@@ -2838,6 +2848,9 @@ async function finishOnboarding(skip) {
   }
   document.getElementById("onboardingModal").classList.add("hidden");
   obIsEditMode = false;
+  document.getElementById("obDot2").style.display = "";
+  document.querySelector("#obStep0 .ob-step-num").textContent = "Step 1 of 3";
+  document.querySelector("#obStep1 .ob-step-num").textContent = "Step 2 of 3";
 }
 
 function openEditProfile() {
@@ -2847,19 +2860,18 @@ function openEditProfile() {
   document.querySelector("#obStep0 .ob-step-num").textContent = "Step 1 of 2";
   document.querySelector("#obStep1 .ob-step-num").textContent = "Step 2 of 2";
   if (userProfile) {
+    document.getElementById("obName").value = userProfile.name || "";
     document.getElementById("obAge").value = userProfile.age || "";
     document.getElementById("obGender").value = userProfile.gender || "";
     document.getElementById("obLocation").value = userProfile.location || "";
     document.getElementById("obConditions").value = (userProfile.conditions || []).join(", ");
     document.getElementById("obMeds").value = (userProfile.medications || []).join(", ");
     document.getElementById("obAllergies").value = (userProfile.allergies || []).join(", ");
-    document.getElementById("obDosha").value = userProfile.dosha || "";
   } else {
-    ["obAge","obLocation","obConditions","obMeds","obAllergies"].forEach(id => {
+    ["obName","obAge","obLocation","obConditions","obMeds","obAllergies"].forEach(id => {
       document.getElementById(id).value = "";
     });
     document.getElementById("obGender").value = "";
-    document.getElementById("obDosha").value = "";
   }
   document.getElementById("onboardingModal").classList.remove("hidden");
   setObStep(0);
@@ -2870,14 +2882,15 @@ function openEditProfile() {
 // ══════════════════════════════════════════════
 function openAccountModal() {
   if (!currentUser) return;
-  const initial = (currentUser.displayName || currentUser.email || "U")[0].toUpperCase();
+  const displayName = (userProfile && userProfile.name) || currentUser.displayName || currentUser.email || "";
+  const initial = displayName[0].toUpperCase();
   const photoHTML = currentUser.photoURL
     ? `<img src="${currentUser.photoURL}" alt=""/>`
     : initial;
   document.getElementById("accountUserSection").innerHTML = `
     <div class="account-avatar">${photoHTML}</div>
     <div>
-      <div class="account-user-name">${escHtml(currentUser.displayName || "")}</div>
+      <div class="account-user-name">${escHtml(displayName)}</div>
       <div class="account-user-email">${escHtml(currentUser.email || "")}</div>
     </div>`;
   // Populate profile details

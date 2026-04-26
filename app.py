@@ -140,6 +140,7 @@ def build_system_prompt(profile=None, consulting_for=None):
             )
     elif profile:
         parts = []
+        if profile.get("name"):       parts.append(f"Name: {profile['name']}")
         if profile.get("age"):        parts.append(f"Age: {profile['age']}")
         if profile.get("gender"):     parts.append(f"Gender: {profile['gender']}")
         if profile.get("location"):   parts.append(f"Location: {profile['location']}")
