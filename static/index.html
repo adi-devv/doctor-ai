@@ -1405,6 +1405,15 @@ body {
         <label class="form-label">Allergies</label>
         <input type="text" id="obAllergies" class="form-input" placeholder="e.g. Penicillin, Peanuts">
       </div>
+      <div class="form-field">
+        <label class="form-label">Body type <span style="font-weight:400;color:var(--ink-faint)">(helps personalise Ayurvedic advice)</span></label>
+        <select id="obDosha" class="form-select">
+          <option value="">Not sure / skip</option>
+          <option value="Vata">Vata — Anxious, light, irregular digestion, sensitive to cold</option>
+          <option value="Pitta">Pitta — Hot, sharp, easily irritable, strong appetite</option>
+          <option value="Kapha">Kapha — Calm, slow, prone to heaviness and congestion</option>
+        </select>
+      </div>
       <div class="ob-actions">
         <button class="ob-btn-skip" onclick="nextObStep(1,true)">Skip</button>
         <button class="ob-btn-primary" onclick="nextObStep(1,false)">Continue</button>
@@ -2773,9 +2782,11 @@ function nextObStep(currentStep, skip) {
       const cond = document.getElementById("obConditions").value.trim();
       const meds = document.getElementById("obMeds").value.trim();
       const allg = document.getElementById("obAllergies").value.trim();
+      const dosha = document.getElementById("obDosha").value;
       if (cond) userProfile.conditions = cond.split(",").map(s => s.trim()).filter(Boolean);
       if (meds) userProfile.medications = meds.split(",").map(s => s.trim()).filter(Boolean);
       if (allg) userProfile.allergies = allg.split(",").map(s => s.trim()).filter(Boolean);
+      if (dosha) userProfile.dosha = dosha; else delete userProfile.dosha;
     }
   }
   if (currentStep === 1 && obIsEditMode) {
@@ -2842,11 +2853,13 @@ function openEditProfile() {
     document.getElementById("obConditions").value = (userProfile.conditions || []).join(", ");
     document.getElementById("obMeds").value = (userProfile.medications || []).join(", ");
     document.getElementById("obAllergies").value = (userProfile.allergies || []).join(", ");
+    document.getElementById("obDosha").value = userProfile.dosha || "";
   } else {
     ["obAge","obLocation","obConditions","obMeds","obAllergies"].forEach(id => {
       document.getElementById(id).value = "";
     });
     document.getElementById("obGender").value = "";
+    document.getElementById("obDosha").value = "";
   }
   document.getElementById("onboardingModal").classList.remove("hidden");
   setObStep(0);
@@ -2870,12 +2883,13 @@ function openAccountModal() {
   // Populate profile details
   const det = document.getElementById("userProfileDetails");
   const p = userProfile || {};
-  const hasInfo = p.age || p.gender || p.location || (p.conditions||[]).length || (p.medications||[]).length || (p.allergies||[]).length;
+  const hasInfo = p.age || p.gender || p.location || p.dosha || (p.conditions||[]).length || (p.medications||[]).length || (p.allergies||[]).length;
   if (hasInfo) {
     const tags = [];
     if (p.age) tags.push(p.age + " yrs");
     if (p.gender) tags.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
     if (p.location) tags.push(p.location);
+    if (p.dosha) tags.push(p.dosha);
     const condParts = [
       ...(p.conditions||[]),
       ...(p.medications||[]),

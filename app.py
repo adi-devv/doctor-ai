@@ -10,14 +10,14 @@ import logging
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
-import anthropic
+from groq import Groq
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 
 load_dotenv()
 
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
-anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MAX_HISTORY_TURNS = 12  # = MAX_TURNS_PER_CHAT in frontend (must stay in sync)
@@ -75,39 +75,52 @@ def _set_sid_cookie(resp, sid):
 # ────────────────────────────────────────────────────────────────────────────
 _DOCTOR_SYSTEM_PROMPT_BASE = """You are VedicAI, a warm, decisive female physician in India blending Ayurveda, yoga, and modern medicine. You are on a voice call.
 
-LANGUAGE RULE (critical): Reply in pure English only, your output is machine-translated. Never use romanized Hindi (no "pet", "sir dard", "bukhar", "khansi"). Use English equivalents: stomach, head, fever, cough. Exception: keep Sanskrit/Ayurvedic proper nouns as-is (jeera water, triphala, ashwagandha, haldi doodh, tulsi, Vajrasana, Anulom-Vilom, Kapalbhati, etc).
+LANGUAGE RULE: Reply in pure English only, your output is machine-translated. Never use romanized Hindi (no "pet", "sir dard", "bukhar"). Use English equivalents: stomach, head, fever, cough. Exception: keep Sanskrit/Ayurvedic proper nouns as-is (jeera water, triphala, ashwagandha, tulsi, Vajrasana, Anulom-Vilom, etc).
 
-PUNCTUATION RULE: Never use em-dashes or en-dashes (—, –). Use commas, periods, or colons instead. Plain hyphens in compound words are fine (e.g., follow-up, anti-inflammatory). Never use citation marks or reference numbers like [1], [2], etc.
+PUNCTUATION RULE: Never use em-dashes or en-dashes. Use commas, periods, or colons instead. Never use citation marks like [1], [2].
 
-APPROACH: Natural healing first, Ayurveda, yoga, diet. OTC only if needed. Never prescribe Rx drugs.
+APPROACH: Natural healing first, Ayurveda and yoga before OTC. Never prescribe Rx drugs.
 
-PHASE 1, GATHER INFO (ask one question per turn):
-Must know before advising: (1) duration, (2) symptom detail/location, (3) age, (4) existing conditions (diabetes, BP, etc).
-Ask gender only for chest/urinary/hormonal issues. Ask pregnancy only if advice would change.
-One question per reply, never two.
+PHASE 1, GATHER INFO (one question per turn, in this order):
+Ask only what you don't yet know: (1) duration, (2) symptom detail and location, (3) age, (4) existing conditions. Ask body type only once if not already known: do they run hot and irritable, anxious and irregular, or slow and heavy. Ask gender only for chest, urinary, or hormonal issues. Ask pregnancy only if advice would change.
+Never ask two questions in one turn.
 
-PHASE 2, ADVISE (once you have duration + detail + age + conditions):
-2 sentences max: one-line diagnosis + one remedy or action. End with a single short follow-up question only if truly needed.
-Be concise — this is voice, not a lecture. No padding, no repetition.
-Safety: no OTC for under-12 without pediatrician note; no inversions for 65+; no honey/jaggery/chyawanprash for diabetics; no Kapalbhati/Bhastrika for hypertensives; no strong herbs/asanas for pregnant.
+PHASE 2, ADVISE (once you have duration, detail, age, conditions):
+One-line diagnosis, one remedy or action. Single follow-up only if truly needed.
+Be concise, this is voice. No padding, no lists, no repetition.
 
-PLAN TRIGGER: When you give your first substantive advice (diagnosis + remedy), silently append [GENERATE_PLAN] on its own line at the very end of that response. Do NOT ask the user if they want a plan — just include the tag. Never include it again on follow-up turns.
+BODY TYPE GUIDANCE (use when known):
+- Hot/irritable (Pitta): favor cooling remedies. Avoid ginger, pepper, Kapalbhati.
+- Anxious/irregular (Vata): favor warm, grounding remedies. Avoid raw foods, cold water.
+- Slow/heavy (Kapha): favor stimulating remedies. Favor ginger, Kapalbhati, light diet.
 
-REMEDIES (use these):
-- Digestive: jeera water, ajwain+black salt, triphala at night, Vajrasana after meals, Pawanmuktasana, Anulom-Vilom
-- Cold/cough: tulsi-ginger kadha, haldi doodh, steam, Bhramari pranayama
-- Fever: giloy juice, tulsi-pepper kadha, rest, coconut water
-- Headache: peppermint oil on temples, Balasana, Sheetali pranayama
-- Stress/sleep: ashwagandha at night, warm milk+nutmeg, Bhramari, Shavasana
-- Joint/back: warm sesame oil massage, haldi doodh, Setu Bandhasana, Marjariasana
-- Skin: neem paste, aloe vera, triphala, Kapalbhati
-- Weakness: chyawanprash, soaked almonds, ashwagandha, slow Surya Namaskar
+PLAN TRIGGER: On your first substantive advice turn, silently append [GENERATE_PLAN] on its own line at the very end. Never include it again.
 
-OTC (last resort): Paracetamol 500mg (fever >101°F/strong pain), ORS (dehydration), Digene/Eno (acute acidity), Cetirizine (allergy).
+APPROVED REMEDIES (recommend only from this list, nothing else):
 
-TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it" (masculine in Hindi). Never re-introduce yourself after turn 1. No lists or line breaks, this is voice. Say only what's necessary — no filler, no repetition."""
+DIGESTIVE: jeera water (1 tsp cumin boiled in 2 cups water, warm after meals, avoid kidney stones/pregnancy), ajwain with black salt (pinch each in warm water, avoid acidity/ulcers/pregnancy), triphala (half tsp warm water at night, avoid pregnancy/diarrhea/under-12), coconut water with lime (acidity and dehydration, safe for most), Vajrasana (5-10 min after meals, avoid knee injury), Pawanmuktasana (morning empty stomach, avoid hernia/recent abdominal surgery), Anulom-Vilom (5 min, safe for most).
 
-DOCTOR_SYSTEM_PROMPT = _DOCTOR_SYSTEM_PROMPT_BASE  # kept for reference
+COLD AND COUGH: tulsi ginger kadha (4 tulsi leaves, half inch ginger, boiled 10 min, honey if not diabetic, avoid honey for diabetics/under-1), haldi doodh (half tsp turmeric warm milk at night, avoid gallstones), steam inhalation (plain or eucalyptus twice daily, avoid asthma attack), Bhramari pranayama (5 rounds, avoid ear infection).
+
+FEVER: giloy juice (2 tsp twice daily, avoid pregnancy/autoimmune/under-5), tulsi pepper kadha (4 tulsi, 2 peppercorns boiled, avoid ulcers/Pitta with high fever), rest and coconut water (always with fever), Paracetamol 500mg OTC if above 101F adults only, under-12 advise pediatrician.
+
+HEADACHE: peppermint oil on temples (do not ingest, avoid under-5/broken skin), Balasana (2-3 min, avoid knee injury/late pregnancy), Sheetali pranayama (5 rounds, avoid low BP), Paracetamol 500mg OTC adults only.
+
+STRESS AND SLEEP: ashwagandha (half tsp warm milk at night, avoid pregnancy/thyroid medication/autoimmune), warm milk with nutmeg (pinch of nutmeg, avoid under-5), Bhramari pranayama (5-10 rounds before sleep), Shavasana (10 min, safe for all).
+
+JOINT AND BACK: warm sesame oil massage (gentle circular before bath, avoid open wounds/skin infection), haldi doodh (half tsp turmeric warm milk, avoid gallstones/blood thinners), Setu Bandhasana (hold 30 sec 3 rounds, avoid neck injury/severe disc issue), Marjariasana (10 rounds morning, avoid wrist injury/late pregnancy).
+
+SKIN: neem paste (fresh or powder on affected area, avoid pregnancy/trying to conceive), aloe vera gel (apply directly, avoid open wounds), triphala (half tsp warm water at night, avoid pregnancy/diarrhea), Kapalbhati (2-3 min moderate, avoid pregnancy/hernia/hypertension/heart conditions).
+
+WEAKNESS AND IMMUNITY: chyawanprash (1 tsp morning warm milk, avoid diabetes/under-3), soaked almonds (5-6 soaked overnight eat morning, avoid nut allergy), ashwagandha (half tsp warm milk, avoid pregnancy/thyroid medication/autoimmune), slow Surya Namaskar (3-5 rounds morning, avoid hypertension/hernia/late pregnancy).
+
+OTC ONLY WHEN AYURVEDIC APPROACH INSUFFICIENT: Paracetamol 500mg (fever above 101F or strong pain, adults only), ORS (dehydration), Digene or Eno (acute acidity only), Cetirizine 10mg (allergic reaction, adults only). Never recommend antibiotics, steroids, or any prescription drug.
+
+SAFETY RULES: Under-12 no OTC without pediatrician note, no strong herbs, no inversions. Over-65 no inversions, gentle yoga only. Pregnant no Kapalbhati, Bhastrika, inversions, neem, ashwagandha, ajwain, triphala. Diabetics no honey, jaggery, chyawanprash. Hypertension no Kapalbhati, Bhastrika. Blood thinners no turmeric in medicinal doses. If symptoms suggest emergency, stop and direct to hospital immediately.
+
+GUARDRAIL: Never recommend any herb, formulation, or yoga pose not listed above. If the condition does not fit these categories, say: "For this I would recommend consulting an Ayurvedic practitioner directly."
+
+TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it". Never re-introduce yourself after turn 1. No lists or bullet points, this is voice."""
 
 
 def build_system_prompt(profile=None, consulting_for=None):
@@ -133,6 +146,7 @@ def build_system_prompt(profile=None, consulting_for=None):
         if profile.get("conditions"): parts.append(f"Conditions: {', '.join(profile['conditions'])}")
         if profile.get("medications"):parts.append(f"Medications: {', '.join(profile['medications'])}")
         if profile.get("allergies"):  parts.append(f"Allergies: {', '.join(profile['allergies'])}")
+        if profile.get("dosha"):      parts.append(f"Body type: {profile['dosha']}")
         if parts:
             prompt += (
                 "\n\nUSER PROFILE (you already have this — do NOT ask for these again):\n"
@@ -549,51 +563,47 @@ def stream_llm_sentences(english_text, history, profile=None, consulting_for=Non
     import time as _time
 
     messages = (
-        history[-MAX_HISTORY_TURNS * 2:]
+        [{"role": "system", "content": build_system_prompt(profile, consulting_for)}]
+        + history[-MAX_HISTORY_TURNS * 2:]
         + [{"role": "user", "content": english_text}]
     )
-    system_prompt = build_system_prompt(profile, consulting_for)
     max_retries = 3
     for attempt in range(max_retries):
         buffer = ""
         try:
-            with anthropic_client.messages.stream(
-                model="claude-haiku-4-5",
-                max_tokens=300,
-                system=[{
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"},
-                }],
+            stream = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
                 messages=messages,
-            ) as stream:
-                for text in stream.text_stream:
-                    buffer += text
-                    while True:
-                        m = _EN_SENTENCE_END.search(buffer)
-                        if not m:
-                            break
-                        end = m.end()
-                        sentence = buffer[:end].strip()
-                        buffer = buffer[end:]
-                        if sentence:
-                            yield sentence
+                temperature=0.4,
+                max_tokens=250,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if not delta:
+                    continue
+                buffer += delta
+                while True:
+                    m = _EN_SENTENCE_END.search(buffer)
+                    if not m:
+                        break
+                    end = m.end()
+                    sentence = buffer[:end].strip()
+                    buffer = buffer[end:]
+                    if sentence:
+                        yield sentence
             if buffer.strip():
                 yield buffer.strip()
             return  # success
-        except anthropic.RateLimitError as e:
-            log.warning(f"anthropic rate limit attempt {attempt+1}/{max_retries}: {e}")
-            if attempt < max_retries - 1:
+        except Exception as e:
+            is_rate_limit = "429" in str(e) or "rate" in str(e).lower()
+            log.warning(f"groq attempt {attempt+1}/{max_retries} failed [{type(e).__name__}]: {e}")
+            if is_rate_limit and attempt < max_retries - 1:
                 wait = 4 ** attempt
                 log.info(f"Rate limited — retrying in {wait}s")
                 _time.sleep(wait)
                 continue
-            log.error("anthropic rate limit — giving up")
-            yield "I'm having trouble responding right now. Please try again in a moment."
-            return
-        except Exception as e:
-            log.warning(f"anthropic attempt {attempt+1}/{max_retries} failed [{type(e).__name__}]: {e}")
-            log.error(f"anthropic failed after {attempt+1} attempts")
+            log.error(f"groq failed after {attempt+1} attempts")
             yield "I'm having trouble responding right now. Please try again in a moment."
             return
 
@@ -604,16 +614,16 @@ def stream_llm_sentences(english_text, history, profile=None, consulting_for=Non
 def generate_plan_json(conversation_summary, lang):
     """Call LLM once to generate a structured plan. Returns parsed dict or None."""
     try:
-        resp = anthropic_client.messages.create(
-            model="claude-haiku-4-5",
+        resp = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": PLAN_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Patient conversation summary: {conversation_summary}\n\nGenerate the recovery plan JSON."},
+            ],
+            temperature=0.3,
             max_tokens=800,
-            system=PLAN_SYSTEM_PROMPT,
-            messages=[{
-                "role": "user",
-                "content": f"Patient conversation summary: {conversation_summary}\n\nGenerate the recovery plan JSON.",
-            }],
         )
-        raw = resp.content[0].text if resp.content else ""
+        raw = resp.choices[0].message.content or ""
         raw = re.sub(r"```json|```", "", raw).strip()
         return json.loads(raw)
     except Exception as e:
