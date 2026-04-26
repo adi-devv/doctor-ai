@@ -2827,6 +2827,7 @@ async function checkOnboarding(user) {
       showOnboarding();
     } else {
       userProfile = doc.data();
+      renderSidebarFooter();
     }
   } catch(e) {}
 }
@@ -2878,7 +2879,7 @@ function nextObStep(currentStep, skip) {
       if (allg) userProfile.allergies = allg.split(",").map(s => s.trim()).filter(Boolean);
     }
   }
-  if (currentStep === 1 && obIsEditMode) {
+  if (currentStep === 1) {
     finishProfileEdit();
     return;
   }
@@ -2886,16 +2887,19 @@ function nextObStep(currentStep, skip) {
 }
 
 async function finishProfileEdit() {
+  const wasEdit = obIsEditMode;
   obIsEditMode = false;
   document.getElementById("onboardingModal").classList.add("hidden");
-  if (currentUser && db && userProfile) {
+  if (!userProfile) userProfile = {};
+  userProfile.onboardingDone = true;
+  if (currentUser && db) {
     try {
       await db.collection("users").doc(currentUser.uid)
         .collection("profile").doc("main").set(userProfile, { merge: true });
-      showToast("Profile updated");
-      renderSidebarFooter();
-    } catch(e) { showToast("Couldn't save profile"); }
+      if (wasEdit) showToast("Profile updated");
+    } catch(e) { if (wasEdit) showToast("Couldn't save profile"); }
   }
+  renderSidebarFooter();
 }
 
 // ── Dosha quiz ────────────────────────────────────────────
