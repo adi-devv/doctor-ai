@@ -1056,19 +1056,87 @@ body {
 .ob-progress { display: flex; gap: 5px; margin-bottom: 20px; }
 .ob-dot { flex: 1; height: 3px; border-radius: 2px; background: var(--rule); transition: background 0.3s; }
 .ob-dot.done { background: var(--accent); }
-.dosha-quiz { display: flex; flex-direction: column; gap: 14px; margin-bottom: 4px; }
-.dosha-q-label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 7px; }
-.dosha-opts { display: flex; flex-direction: column; gap: 5px; }
-.dosha-opt {
-  text-align: left; padding: 9px 13px;
-  border: 1.5px solid var(--rule); border-radius: 10px;
-  background: var(--surface); color: var(--ink-soft);
-  font-size: 13px; line-height: 1.4; cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+/* ── Dosha quiz modal ─────────────────────────── */
+.dosha-modal { max-width: 390px; padding: 0; overflow: hidden; }
+.dosha-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 22px 0;
 }
-.dosha-opt:hover { border-color: var(--ink-faint); color: var(--ink); }
-.dosha-opt.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.dosha-modal-title {
+  font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600;
+  letter-spacing: -0.3px; color: var(--ink);
+}
+.dosha-close-btn {
+  background: none; border: none; cursor: pointer; color: var(--ink-faint);
+  padding: 4px; border-radius: 6px; line-height: 1;
+  transition: color 0.15s;
+}
+.dosha-close-btn:hover { color: var(--ink); }
+.dosha-prog-track { height: 2px; background: var(--rule); margin: 16px 0 0; }
+.dosha-prog-fill { height: 100%; background: var(--accent); transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+.dosha-q-body { padding: 16px 22px 20px; }
+.dosha-q-counter {
+  font-size: 10.5px; font-weight: 700; color: var(--ink-faint);
+  text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 10px;
+}
+.dosha-q-text {
+  font-size: 16.5px; font-weight: 500; color: var(--ink);
+  line-height: 1.45; margin-bottom: 18px;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.dosha-opts-wrap { display: flex; flex-direction: column; gap: 7px; transition: opacity 0.18s ease; }
+.dosha-opt-btn {
+  text-align: left; padding: 11px 15px; border-radius: 11px;
+  border: 1.5px solid var(--rule); background: var(--surface);
+  color: var(--ink-soft); font-size: 13.5px; line-height: 1.45;
+  cursor: pointer; font-family: 'Inter', sans-serif;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.1s;
+  width: 100%;
+}
+.dosha-opt-btn:hover { border-color: var(--accent); color: var(--ink); transform: translateX(2px); }
+.dosha-opt-btn:active { transform: scale(0.98); }
+/* Result */
+.dosha-result-body {
+  padding: 28px 24px 24px; text-align: center;
+  animation: rise 0.4s ease;
+}
+.dosha-result-icon { font-size: 52px; line-height: 1; margin-bottom: 14px; }
+.dosha-result-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--ink-faint); margin-bottom: 4px;
+}
+.dosha-result-type {
+  font-family: 'Fraunces', serif; font-size: 32px; font-weight: 600;
+  letter-spacing: -0.5px; color: var(--ink); margin-bottom: 5px;
+}
+.dosha-result-tagline { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 20px; }
+.dosha-result-traits {
+  display: flex; flex-direction: column; gap: 7px;
+  margin: 0 0 16px; text-align: left;
+}
+.dosha-result-trait {
+  font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 10px;
+}
+.dosha-trait-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--accent);
+}
+.dosha-result-advice {
+  font-size: 13px; color: var(--ink-soft); background: var(--rule-soft);
+  border-radius: 10px; padding: 11px 14px; margin-bottom: 22px;
+  line-height: 1.55; text-align: left;
+}
+.dosha-result-actions { display: flex; gap: 10px; }
+/* Sidebar quiz prompt */
+.dosha-prompt {
+  margin: 0 10px 8px; padding: 11px 13px; border-radius: 12px;
+  background: var(--accent-soft); border: 1px solid rgba(184,124,92,0.18);
+  cursor: pointer; display: flex; align-items: center; gap: 11px;
+  transition: background 0.15s;
+}
+.dosha-prompt:hover { background: #ede3d6; }
+.dosha-prompt-text { flex: 1; min-width: 0; }
+.dosha-prompt-title { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.dosha-prompt-sub { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
 .form-row { display: flex; gap: 12px; }
 .form-field { flex: 1; display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .form-label {
@@ -1367,12 +1435,11 @@ body {
     <div class="ob-progress">
       <div class="ob-dot done" id="obDot0"></div>
       <div class="ob-dot" id="obDot1"></div>
-      <div class="ob-dot" id="obDot2"></div>
     </div>
 
     <!-- Step 1: About you -->
     <div class="onboarding-step active" id="obStep0">
-      <div class="ob-step-num">Step 1 of 3</div>
+      <div class="ob-step-num">Step 1 of 2</div>
       <div class="ob-title">About you</div>
       <div class="ob-sub">This helps VedicAI give you relevant advice without asking every time.</div>
       <div class="form-field">
@@ -1406,7 +1473,7 @@ body {
 
     <!-- Step 2: Health -->
     <div class="onboarding-step" id="obStep1">
-      <div class="ob-step-num">Step 2 of 3</div>
+      <div class="ob-step-num">Step 2 of 2</div>
       <div class="ob-title">Your health</div>
       <div class="ob-sub">Any context you share makes consultations more accurate. You can edit this later in settings.</div>
       <div class="form-field">
@@ -1428,40 +1495,40 @@ body {
       </div>
     </div>
 
-    <!-- Step 3: Body type quiz -->
-    <div class="onboarding-step" id="obStep2">
-      <div class="ob-step-num">Step 3 of 3</div>
-      <div class="ob-title">Your body type</div>
-      <div class="ob-sub">3 quick questions — we'll determine your Ayurvedic type for personalised advice.</div>
-      <div class="dosha-quiz">
-        <div class="dosha-q">
-          <div class="dosha-q-label">1. How would you describe your build?</div>
-          <div class="dosha-opts">
-            <button class="dosha-opt" data-type="vata" onclick="selectDoshaOpt(this)">Light and thin, quick to move but tires easily</button>
-            <button class="dosha-opt" data-type="pitta" onclick="selectDoshaOpt(this)">Medium build, warm, muscular and driven</button>
-            <button class="dosha-opt" data-type="kapha" onclick="selectDoshaOpt(this)">Broad and solid, calm and slow to tire</button>
-          </div>
-        </div>
-        <div class="dosha-q">
-          <div class="dosha-q-label">2. How is your digestion?</div>
-          <div class="dosha-opts">
-            <button class="dosha-opt" data-type="vata" onclick="selectDoshaOpt(this)">Irregular — changes from day to day</button>
-            <button class="dosha-opt" data-type="pitta" onclick="selectDoshaOpt(this)">Strong and sharp — gets hungry often</button>
-            <button class="dosha-opt" data-type="kapha" onclick="selectDoshaOpt(this)">Slow and steady — feels heavy after meals</button>
-          </div>
-        </div>
-        <div class="dosha-q">
-          <div class="dosha-q-label">3. Under stress you tend to...</div>
-          <div class="dosha-opts">
-            <button class="dosha-opt" data-type="vata" onclick="selectDoshaOpt(this)">Worry and feel anxious</button>
-            <button class="dosha-opt" data-type="pitta" onclick="selectDoshaOpt(this)">Get irritable or frustrated</button>
-            <button class="dosha-opt" data-type="kapha" onclick="selectDoshaOpt(this)">Withdraw and go quiet</button>
-          </div>
-        </div>
+  </div>
+</div>
+
+<!-- ══════════ DOSHA QUIZ MODAL ══════════ -->
+<div class="modal-overlay hidden" id="doshaModal" onclick="if(event.target===this)closeDoshaModal()">
+  <div class="modal dosha-modal">
+    <!-- Quiz phase -->
+    <div id="doshaQuizPhase">
+      <div class="dosha-modal-header">
+        <div class="dosha-modal-title">Know your body type</div>
+        <button class="dosha-close-btn" onclick="closeDoshaModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <div class="ob-actions">
-        <button class="ob-btn-skip" onclick="finishDoshaQuiz(true)">Skip</button>
-        <button class="ob-btn-primary" onclick="finishDoshaQuiz(false)">Done</button>
+      <div class="dosha-prog-track"><div class="dosha-prog-fill" id="doshaProgFill" style="width:0%"></div></div>
+      <div class="dosha-q-body">
+        <div class="dosha-q-counter" id="doshaCounter">Question 1 of 7</div>
+        <div class="dosha-q-text" id="doshaQText"></div>
+        <div class="dosha-opts-wrap" id="doshaOptsWrap"></div>
+      </div>
+    </div>
+    <!-- Result phase -->
+    <div id="doshaResultPhase" style="display:none">
+      <div class="dosha-result-body">
+        <div class="dosha-result-icon" id="doshaResultIcon"></div>
+        <div class="dosha-result-label">Your Ayurvedic type</div>
+        <div class="dosha-result-type" id="doshaResultType"></div>
+        <div class="dosha-result-tagline" id="doshaResultTagline"></div>
+        <div class="dosha-result-traits" id="doshaResultTraits"></div>
+        <div class="dosha-result-advice" id="doshaResultAdvice"></div>
+        <div class="dosha-result-actions">
+          <button class="ob-btn-skip" onclick="retakeDoshaQuiz()">Retake</button>
+          <button class="ob-btn-primary" onclick="saveDoshaResult()">Save to profile</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1606,7 +1673,16 @@ function renderSidebarFooter() {
     const photoHTML = currentUser.photoURL
       ? `<img src="${currentUser.photoURL}" alt=""/>`
       : initial;
-    footer.innerHTML = `
+    const doshaPrompt = (userProfile && !userProfile.dosha)
+      ? `<div class="dosha-prompt" onclick="openDoshaQuiz()">
+           <div style="font-size:19px;line-height:1">🌿</div>
+           <div class="dosha-prompt-text">
+             <div class="dosha-prompt-title">Know your body type</div>
+             <div class="dosha-prompt-sub">2 min quiz · personalises advice</div>
+           </div>
+           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
+         </div>` : "";
+    footer.innerHTML = doshaPrompt + `
       <div class="user-info" onclick="openAccountModal()" style="cursor:pointer;">
         <div class="user-avatar">${photoHTML}</div>
         <div class="user-name">${escHtml(displayName)}</div>
@@ -2777,9 +2853,8 @@ function setObStep(step) {
   document.querySelectorAll(".ob-dot").forEach((dot, i) => {
     dot.classList.toggle("done", i <= step);
   });
-  // In edit mode step 1 = last step, update button label
   const step1Btn = document.querySelector("#obStep1 .ob-btn-primary");
-  if (step1Btn) step1Btn.textContent = (obIsEditMode && step === 1) ? "Save" : "Continue";
+  if (step1Btn) step1Btn.textContent = step === 1 ? "Save" : "Continue";
 }
 
 function nextObStep(currentStep, skip) {
@@ -2812,53 +2887,151 @@ function nextObStep(currentStep, skip) {
 
 async function finishProfileEdit() {
   obIsEditMode = false;
-  document.getElementById("obDot2").style.display = "";
-  document.querySelector("#obStep0 .ob-step-num").textContent = "Step 1 of 3";
-  document.querySelector("#obStep1 .ob-step-num").textContent = "Step 2 of 3";
   document.getElementById("onboardingModal").classList.add("hidden");
   if (currentUser && db && userProfile) {
     try {
       await db.collection("users").doc(currentUser.uid)
         .collection("profile").doc("main").set(userProfile, { merge: true });
       showToast("Profile updated");
+      renderSidebarFooter();
     } catch(e) { showToast("Couldn't save profile"); }
   }
 }
 
-function selectDoshaOpt(btn) {
-  btn.closest(".dosha-opts").querySelectorAll(".dosha-opt").forEach(b => b.classList.remove("selected"));
-  btn.classList.add("selected");
+// ── Dosha quiz ────────────────────────────────────────────
+const DOSHA_QUESTIONS = [
+  { q: "How would you describe your body frame?", opts: [
+    { text: "Light and thin, hard to gain weight", type: "vata" },
+    { text: "Medium build, muscular, gains and loses weight easily", type: "pitta" },
+    { text: "Broad and solid, gains weight easily", type: "kapha" },
+  ]},
+  { q: "How is your skin usually?", opts: [
+    { text: "Dry, rough, or flaky", type: "vata" },
+    { text: "Warm, oily, prone to redness or breakouts", type: "pitta" },
+    { text: "Thick, smooth, cool and moist", type: "kapha" },
+  ]},
+  { q: "How is your digestion?", opts: [
+    { text: "Irregular — changes from day to day", type: "vata" },
+    { text: "Strong and sharp — gets very hungry, irritable if delayed", type: "pitta" },
+    { text: "Slow and steady — feels heavy or sluggish after meals", type: "kapha" },
+  ]},
+  { q: "How is your energy through the day?", opts: [
+    { text: "Bursts of energy, then tires quickly", type: "vata" },
+    { text: "Sustained and intense, hard to stop once started", type: "pitta" },
+    { text: "Slow to start but steady once going", type: "kapha" },
+  ]},
+  { q: "How do you sleep?", opts: [
+    { text: "Light, mind races, wakes easily", type: "vata" },
+    { text: "Moderate, wakes alert and refreshed", type: "pitta" },
+    { text: "Deep and heavy, loves sleeping long", type: "kapha" },
+  ]},
+  { q: "Under stress you tend to...", opts: [
+    { text: "Worry, feel anxious, overthink", type: "vata" },
+    { text: "Get irritable, critical, or frustrated", type: "pitta" },
+    { text: "Withdraw, shut down, avoid", type: "kapha" },
+  ]},
+  { q: "Which bothers you most?", opts: [
+    { text: "Cold weather and wind", type: "vata" },
+    { text: "Heat and direct sun", type: "pitta" },
+    { text: "Cold damp weather and clouds", type: "kapha" },
+  ]},
+];
+
+const DOSHA_INFO = {
+  Vata:  { icon: "🌬️", tagline: "Air · Creative, quick, and light", traits: ["Quick mind, loves change and movement", "Sensitive to cold, prone to dryness", "Irregular appetite and variable sleep"], advice: "Warm, grounding routines and nourishing foods work best for you. Favour warmth, oil, and regularity." },
+  Pitta: { icon: "🔥", tagline: "Fire · Focused, sharp, and driven", traits: ["Strong intellect and powerful digestion", "Runs warm, prone to inflammation and intensity", "Goal-oriented, decisive, and precise"], advice: "Cooling and calming practices help balance your fire. Favour cooling foods, relaxation, and moderation." },
+  Kapha: { icon: "🌿", tagline: "Earth · Calm, steady, and nurturing", traits: ["Excellent stamina and deep loyalty", "Slow metabolism, loves routine and comfort", "Naturally patient, caring, and grounded"], advice: "Stimulating movement and lighter meals keep you energised. Favour variety, exercise, and spiced foods." },
+};
+
+let doshaScores = { vata: 0, pitta: 0, kapha: 0 };
+let doshaCurrentQ = 0;
+let doshaComputedResult = null;
+
+function openDoshaQuiz() {
+  doshaScores = { vata: 0, pitta: 0, kapha: 0 };
+  doshaCurrentQ = 0;
+  doshaComputedResult = null;
+  document.getElementById("doshaQuizPhase").style.display = "";
+  document.getElementById("doshaResultPhase").style.display = "none";
+  document.getElementById("doshaModal").classList.remove("hidden");
+  showDoshaQ(0);
 }
 
-async function finishDoshaQuiz(skip) {
-  if (!userProfile) userProfile = {};
-  if (!skip) {
-    const selected = document.querySelectorAll("#obStep2 .dosha-opt.selected");
-    const scores = { vata: 0, pitta: 0, kapha: 0 };
-    selected.forEach(b => { if (b.dataset.type in scores) scores[b.dataset.type]++; });
-    const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-    if (top && top[1] > 0) userProfile.dosha = top[0].charAt(0).toUpperCase() + top[0].slice(1);
+function showDoshaQ(idx) {
+  const q = DOSHA_QUESTIONS[idx];
+  const counter = document.getElementById("doshaCounter");
+  const qText = document.getElementById("doshaQText");
+  const opts = document.getElementById("doshaOptsWrap");
+  const fill = document.getElementById("doshaProgFill");
+
+  // fade out
+  qText.style.opacity = "0"; qText.style.transform = "translateY(6px)";
+  opts.style.opacity = "0";
+
+  setTimeout(() => {
+    counter.textContent = `Question ${idx + 1} of ${DOSHA_QUESTIONS.length}`;
+    fill.style.width = `${(idx / DOSHA_QUESTIONS.length) * 100}%`;
+    qText.textContent = q.q;
+    opts.innerHTML = q.opts.map(o =>
+      `<button class="dosha-opt-btn" onclick="answerDoshaQ('${o.type}')">${o.text}</button>`
+    ).join("");
+    qText.style.opacity = "1"; qText.style.transform = "translateY(0)";
+    opts.style.opacity = "1";
+  }, 180);
+}
+
+function answerDoshaQ(type) {
+  doshaScores[type]++;
+  doshaCurrentQ++;
+  if (doshaCurrentQ < DOSHA_QUESTIONS.length) {
+    showDoshaQ(doshaCurrentQ);
+  } else {
+    document.getElementById("doshaProgFill").style.width = "100%";
+    setTimeout(() => showDoshaResult(), 300);
   }
-  userProfile.onboardingDone = true;
+}
+
+function showDoshaResult() {
+  const top = Object.entries(doshaScores).sort((a, b) => b[1] - a[1])[0][0];
+  doshaComputedResult = top.charAt(0).toUpperCase() + top.slice(1);
+  const info = DOSHA_INFO[doshaComputedResult];
+  document.getElementById("doshaResultIcon").textContent = info.icon;
+  document.getElementById("doshaResultType").textContent = doshaComputedResult;
+  document.getElementById("doshaResultTagline").textContent = info.tagline;
+  document.getElementById("doshaResultTraits").innerHTML =
+    info.traits.map(t => `<div class="dosha-result-trait"><div class="dosha-trait-dot"></div>${t}</div>`).join("");
+  document.getElementById("doshaResultAdvice").textContent = info.advice;
+  document.getElementById("doshaQuizPhase").style.display = "none";
+  document.getElementById("doshaResultPhase").style.display = "";
+}
+
+function retakeDoshaQuiz() {
+  doshaComputedResult = null;
+  openDoshaQuiz();
+}
+
+async function saveDoshaResult() {
+  if (!doshaComputedResult) return;
+  if (!userProfile) userProfile = {};
+  userProfile.dosha = doshaComputedResult;
+  document.getElementById("doshaModal").classList.add("hidden");
+  renderSidebarFooter();
   if (currentUser && db) {
     try {
       await db.collection("users").doc(currentUser.uid)
         .collection("profile").doc("main").set(userProfile, { merge: true });
-    } catch(e) {}
+      showToast(`${doshaComputedResult} saved to your profile`);
+    } catch(e) { showToast("Couldn't save — try again"); }
   }
-  document.getElementById("onboardingModal").classList.add("hidden");
-  obIsEditMode = false;
-  document.getElementById("obDot2").style.display = "";
-  document.querySelector("#obStep0 .ob-step-num").textContent = "Step 1 of 3";
-  document.querySelector("#obStep1 .ob-step-num").textContent = "Step 2 of 3";
+}
+
+function closeDoshaModal() {
+  document.getElementById("doshaModal").classList.add("hidden");
 }
 
 function openEditProfile() {
   closeAccountModal();
   obIsEditMode = true;
-  document.getElementById("obDot2").style.display = "none";
-  document.querySelector("#obStep0 .ob-step-num").textContent = "Step 1 of 2";
-  document.querySelector("#obStep1 .ob-step-num").textContent = "Step 2 of 2";
   if (userProfile) {
     document.getElementById("obName").value = userProfile.name || "";
     document.getElementById("obAge").value = userProfile.age || "";
@@ -2896,23 +3069,26 @@ function openAccountModal() {
   // Populate profile details
   const det = document.getElementById("userProfileDetails");
   const p = userProfile || {};
-  const hasInfo = p.age || p.gender || p.location || p.dosha || (p.conditions||[]).length || (p.medications||[]).length || (p.allergies||[]).length;
+  const hasInfo = p.age || p.gender || p.location || (p.conditions||[]).length || (p.medications||[]).length || (p.allergies||[]).length;
+  const doshaHtml = p.dosha
+    ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+         <span class="account-profile-tag" style="background:var(--accent-soft);color:var(--accent);font-weight:600">${escHtml(p.dosha)}</span>
+         <button onclick="closeAccountModal();openDoshaQuiz()" style="font-size:11px;color:var(--ink-faint);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px">retake quiz</button>
+       </div>`
+    : `<button onclick="closeAccountModal();openDoshaQuiz()" style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0 0 8px;font-weight:500;display:flex;align-items:center;gap:4px">
+         🌿 Take body type quiz
+       </button>`;
   if (hasInfo) {
     const tags = [];
     if (p.age) tags.push(p.age + " yrs");
     if (p.gender) tags.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
     if (p.location) tags.push(p.location);
-    if (p.dosha) tags.push(p.dosha);
-    const condParts = [
-      ...(p.conditions||[]),
-      ...(p.medications||[]),
-      ...(p.allergies||[]),
-    ];
-    det.innerHTML =
+    const condParts = [...(p.conditions||[]), ...(p.medications||[]), ...(p.allergies||[])];
+    det.innerHTML = doshaHtml +
       (tags.length ? `<div class="account-profile-tags">${tags.map(t => `<span class="account-profile-tag">${escHtml(t)}</span>`).join("")}</div>` : "") +
       (condParts.length ? `<div class="account-profile-conditions">${escHtml(condParts.join(" · "))}</div>` : "");
   } else {
-    det.innerHTML = `<div class="account-profile-empty">No profile info. <button onclick="openEditProfile()">Add details</button></div>`;
+    det.innerHTML = doshaHtml + `<div class="account-profile-empty">No profile info. <button onclick="openEditProfile()">Add details</button></div>`;
   }
   document.getElementById("accountModal").classList.remove("hidden");
   loadFamilyMembers();
