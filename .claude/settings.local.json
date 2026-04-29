@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(firebase deploy *)",
+      "Bash(git --version)",
+      "Bash(git lfs *)",
+      "Bash(mv \"D:\\\\Aadit\\\\Learning AI\\\\_hf-temp\\\\.git\" \"D:\\\\Aadit\\\\Learning AI\\\\doctor-ai\\\\.git\")",
+      "Bash(mv \"D:\\\\Aadit\\\\Learning AI\\\\_hf-temp\\\\.gitattributes\" \"D:\\\\Aadit\\\\Learning AI\\\\doctor-ai\\\\.gitattributes\")",
+      "Bash(mv \"D:\\\\Aadit\\\\Learning AI\\\\_hf-temp\\\\.gitignore\" \"D:\\\\Aadit\\\\Learning AI\\\\doctor-ai\\\\.gitignore\")",
+      "Bash(rm -rf \"D:\\\\Aadit\\\\Learning AI\\\\_hf-temp\")",
+      "Bash(git config *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(git ls-tree *)",
+      "Bash(git rm *)",
+      "Bash(grep -n \"\\\\[2\\\\]\\\\|\\\\[1\\\\]\\\\|citation\\\\|footnote\\\\|reference\\\\|\\\\\\\\\\\\[\" \"D:\\\\Aadit\\\\Learning AI\\\\doctor-ai\\\\app.py\")",
+      "WebFetch(domain:en.wikipedia.org)",
+      "Skill(claude-api)"
+    ]
+  }
+}
