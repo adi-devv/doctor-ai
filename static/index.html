@@ -469,7 +469,7 @@ body {
 }
 
 .lang-row {
-  max-width: 720px; margin: 0 auto 10px; position: relative;
+  max-width: 800px; margin: 0 auto 10px; position: relative; overflow: hidden;
 }
 .lang-row::after {
   content:''; position:absolute; right:0; top:0; bottom:0; width: 30px;
@@ -477,7 +477,7 @@ body {
 }
 .lang-scroll {
   display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
-  padding-right: 24px; padding-bottom: 2px;
+  padding-right: 24px; padding-bottom: 2px; flex-wrap: nowrap;
 }
 .lang-scroll::-webkit-scrollbar { display: none; }
 
@@ -533,7 +533,7 @@ body {
   100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); }
 }
 
-/* THINKING — black pill, centered dots + text */
+/* THINKING — black pill, bouncing dots */
 .mic-btn.thinking {
   background: var(--ink);
   border: none;
@@ -547,10 +547,29 @@ body {
 #thinkingGroup {
   display: none;
   align-items: center;
+  gap: 8px;
 }
 .mic-btn.thinking #thinkingGroup { display: flex; }
 .mic-btn.thinking #micLabelStatic { display: none; }
-#micLabel { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.8); }
+#micLabel {
+  font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.75);
+  animation: micBounce 0.9s ease-in-out infinite;
+  display: inline-block;
+}
+.mic-think-dots { display: flex; gap: 5px; align-items: center; }
+.mic-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  animation: micBounce 0.9s ease-in-out infinite;
+  display: inline-block;
+}
+.mic-dot:nth-child(1) { animation-delay: 0.15s; }
+.mic-dot:nth-child(2) { animation-delay: 0.30s; }
+.mic-dot:nth-child(3) { animation-delay: 0.45s; }
+@keyframes micBounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
 .chat-load-indicator {
   flex: 1;
   display: flex; flex-direction: column;
@@ -1347,7 +1366,12 @@ body {
           <line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
         <span id="thinkingGroup">
-          <span id="micLabel">Thinking...</span>
+          <span id="micLabel">Thinking</span>
+          <span class="mic-think-dots">
+            <span class="mic-dot"></span>
+            <span class="mic-dot"></span>
+            <span class="mic-dot"></span>
+          </span>
         </span>
         <span id="micLabelStatic">Choose a language first</span>
       </button>
@@ -1735,7 +1759,7 @@ function renderChatList(chats) {
     const label = formatChatDate(date);
     item.innerHTML = `
       <div class="chat-item-title">${escHtml(chat.title || "Consultation")}</div>
-      <div class="chat-item-sub">${escHtml(chat.lang || "")} · ${label}</div>
+      <div class="chat-item-sub">${escHtml(chat.lang || "")}${chat.consulting_for_name ? ` · ${escHtml(chat.consulting_for_name)}` : ""} · ${label}</div>
       <div class="chat-item-actions">
         <button class="chat-item-action" onclick="event.stopPropagation();startRenameChat('${chat.id}', this)" title="Rename">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1777,12 +1801,17 @@ async function saveCurrentChat(userText, userTextEn, doctorText, doctorTextEn, p
 
     if (!currentChatId) {
       const title = userText.slice(0, 50);
-      const docRef = await chatsRef.add({
+      const chatDoc = {
         title,
         lang: selectedLang?.name || "",
         lang_code: selectedLang?.code || "",
         updatedAt: now, createdAt: now,
-      });
+      };
+      if (selectedConsultingFor) {
+        chatDoc.consulting_for_id = selectedConsultingFor.id;
+        chatDoc.consulting_for_name = selectedConsultingFor.name;
+      }
+      const docRef = await chatsRef.add(chatDoc);
       currentChatId = docRef.id;
       history.pushState({chatId: currentChatId}, "", `/chat/${currentChatId}`);
     } else {
@@ -1839,6 +1868,8 @@ async function loadChat(chatId) {
     const chatData = chatDoc.data() || {};
     const langCode = chatData.lang_code || null;
     const langName = chatData.lang || null;
+    const storedMemberName = chatData.consulting_for_name || null;
+    const storedMemberId = chatData.consulting_for_id || null;
 
     currentChatId = chatId;
     history.pushState({chatId}, "", `/chat/${chatId}`);
@@ -1847,6 +1878,15 @@ async function loadChat(chatId) {
 
     // Restore language state
     unlockLangChips();
+
+    // Restore family member
+    if (storedMemberId && familyMembers.length) {
+      selectedConsultingFor = familyMembers.find(m => m.id === storedMemberId) || null;
+    } else {
+      selectedConsultingFor = null;
+    }
+    const memberLabel = selectedConsultingFor ? selectedConsultingFor.name : (storedMemberName || null);
+
     const storedMessages = snap.docs.map(d => d.data());
 
     if (langCode && langName) {
@@ -1870,7 +1910,16 @@ async function loadChat(chatId) {
         setStatus("Connected", "active");
         startTimer();
         setMicState("idle", "Tap to speak");
-        $("presenceSub").textContent = `General physician · Ayurveda + modern · ${langName}`;
+        const forLabel = memberLabel ? ` · for ${memberLabel}` : "";
+        $("presenceSub").textContent = `General physician · Ayurveda + modern · ${langName}${forLabel}`;
+        // Lock member selector to reflect the stored state
+        if (memberLabel) {
+          const lbl = document.getElementById("memberDropdownLabel");
+          if (lbl) lbl.textContent = memberLabel;
+          lockMemberSelector();
+        } else {
+          lockMemberSelector();
+        }
       }
     } else {
       setStatus("History", "active");
@@ -2376,7 +2425,15 @@ async function selectLanguage(lang, btn) {
     });
     data = await res.json();
   } catch (e) {
-    showToast("Connection failed");
+    // Reset to a clean state so the user can tap the chip again
+    selectedLang = null;
+    document.querySelectorAll(".lang-chip").forEach(b => b.classList.remove("active"));
+    unlockLangChips();
+    const t = $("thinkingMsg"); if (t) t.remove();
+    setMicState("disabled", "Choose a language first");
+    setStatus("Pick a language");
+    presence.style.display = "none";
+    showToast("Connection failed — tap a language to retry");
     return;
   }
   if (myToken !== sessionToken) return;
