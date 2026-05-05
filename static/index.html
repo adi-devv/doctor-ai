@@ -2245,7 +2245,7 @@ function setMicState(s, label) {
   );
 
   if (s === "thinking") {
-    document.getElementById("micLabel").textContent = label || "Thinking...";
+    document.getElementById("micLabel").textContent = label || "Thinking";
   } else {
     document.getElementById("micLabelStatic").textContent = label;
     if (s === "recording") {
@@ -2572,7 +2572,7 @@ function stopRecording() {
   silenceTimer = maxTimer = null;
   if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
   try { mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(t => t.stop()); } catch(e){}
-  setMicState("thinking", "Thinking...");
+  setMicState("thinking", "Thinking");
 }
 
 // ─── Process audio + streaming chat ───
