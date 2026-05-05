@@ -2404,6 +2404,7 @@ let liveMicStream = null;
 let liveAccumulated = "";
 let liveSubmitTimer = null;
 let liveAutoRestart = false;
+let liveStarting = false;
 const LIVE_SUBMIT_DELAY_MS = 1800;
 
 function getWsUrl(path) {
@@ -2462,6 +2463,7 @@ function _loAddThinking() {
 
 function _teardownLiveSTT() {
   liveAutoRestart = false;
+  liveStarting = false;
   if (liveSubmitTimer) { clearTimeout(liveSubmitTimer); liveSubmitTimer = null; }
   if (liveProcessor) { try { liveProcessor.disconnect(); } catch(e){} liveProcessor = null; }
   if (liveAudioCtx) { try { liveAudioCtx.close(); } catch(e){} liveAudioCtx = null; }
@@ -2474,23 +2476,28 @@ function _teardownLiveSTT() {
 }
 
 async function startLiveSTT() {
-  if (liveWs) return;
-  if (!selectedLang || state === "thinking" || state === "streaming") return;
-  if (currentTurns >= MAX_TURNS_PER_CHAT) return;
+  if (liveWs || liveStarting) return;
+  liveStarting = true;
+  if (!selectedLang || state === "thinking" || state === "streaming") { liveStarting = false; return; }
+  if (currentTurns >= MAX_TURNS_PER_CHAT) { liveStarting = false; return; }
 
   let stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
   } catch (e) {
+    liveStarting = false;
     showToast("Mic access denied");
     return;
   }
+
+  if (!liveMode) { liveStarting = false; stream.getTracks().forEach(t => t.stop()); return; }
 
   stopAllAudio();
   liveMicStream = stream;
   liveAccumulated = "";
 
   liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  await liveAudioCtx.resume();
   const nativeRate = liveAudioCtx.sampleRate;
   const source = liveAudioCtx.createMediaStreamSource(stream);
   liveProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
@@ -2499,6 +2506,7 @@ async function startLiveSTT() {
 
   const wsUrl = getWsUrl("/ws/live") + "?sid=" + encodeURIComponent(clientSid);
   liveWs = new WebSocket(wsUrl);
+  liveStarting = false;
   liveWs.binaryType = "arraybuffer";
 
   liveWs.onopen = () => {
@@ -2553,6 +2561,11 @@ async function startLiveSTT() {
       const text = liveAccumulated.trim();
       _teardownLiveSTT();
       _runLiveChatTurn(text, sessionToken);
+    } else if (liveMode && state !== "thinking" && state !== "streaming") {
+      _teardownLiveSTT();
+      _setLoStatus("Reconnecting…", "");
+      _setLoRing("idle");
+      setTimeout(() => { if (liveMode) startLiveSTT(); }, 1500);
     }
   };
 
@@ -2572,9 +2585,8 @@ async function startLiveSTT() {
   setTimeout(() => {
     if (liveWs && !liveAccumulated.trim()) {
       _teardownLiveSTT();
-      _setLoStatus("Listening…", "listening");
-      _setLoRing("listening");
       state = "idle";
+      if (liveMode) setTimeout(() => { if (liveMode) startLiveSTT(); }, 500);
     }
   }, 45000);
 
