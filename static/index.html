@@ -1269,122 +1269,115 @@ body {
 .live-btn:hover .live-btn-dot { background: white; }
 
 /* ══════════════════════════════════════════════
-   LIVE CALL OVERLAY
+   LIVE CALL OVERLAY — minimal orb style
 ══════════════════════════════════════════════ */
 .live-overlay {
   position: fixed; inset: 0; z-index: 50;
-  background: rgba(18,14,10,0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: #0c0a08;
   display: none; flex-direction: column;
-  align-items: center;
+  align-items: center; justify-content: space-between;
+  padding: 18px 20px 32px;
 }
 .live-overlay.on { display: flex; }
 
-.lo-header {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  flex-shrink: 0;
+.lo-topbar {
+  width: 100%; display: flex; align-items: center;
+  justify-content: space-between; flex-shrink: 0;
 }
-.lo-brand { display: flex; align-items: center; gap: 9px; }
-.lo-brand-mark {
-  width: 26px; height: 26px; border-radius: 50%;
-  background: var(--accent);
+.lo-topbar-info {
+  font-size: 11.5px; color: rgba(255,255,255,0.25);
+  letter-spacing: 0.2px;
+}
+.lo-close-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(255,255,255,0.07); border: none;
+  color: rgba(255,255,255,0.38); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-}
-.lo-brand-name {
-  font-family: 'Fraunces', serif; font-weight: 600; font-size: 17px;
-  color: white; letter-spacing: -0.4px;
-}
-.lo-brand-name em { font-style: italic; color: rgba(255,160,130,1); font-weight: 500; }
-.lo-end-btn {
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 16px; border-radius: 100px;
-  background: rgba(194,57,42,0.15); border: 1.5px solid rgba(194,57,42,0.45);
-  color: #ff8a7a; font-family: 'Inter', sans-serif;
-  font-size: 13px; font-weight: 600; cursor: pointer;
   transition: all 0.18s;
 }
-.lo-end-btn:hover { background: var(--danger); border-color: var(--danger); color: white; }
-.lo-end-btn svg { width: 14px; height: 14px; }
+.lo-close-btn:hover { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.7); }
 
-.lo-body {
-  flex: 1; width: 100%; display: flex; flex-direction: column;
-  align-items: center; overflow: hidden;
-  padding: 28px 20px 16px; gap: 10px;
-  max-width: 560px; margin: 0 auto;
+.lo-center {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
 }
 
-.lo-avatar-zone { position: relative; margin-bottom: 6px; flex-shrink: 0; }
-.lo-ring {
-  position: absolute; inset: -16px; border-radius: 50%;
-  border: 2px solid var(--accent); opacity: 0;
-  pointer-events: none; transition: opacity 0.4s;
+/* Orb with ripple rings */
+.lo-orb-wrap {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 240px; height: 240px;
 }
-.lo-ring[data-state="idle"]      { opacity: 0.3;  animation: loRing 2.2s ease-in-out infinite; }
-.lo-ring[data-state="listening"] { opacity: 0.65; animation: loRing 1.4s ease-in-out infinite; }
-.lo-ring[data-state="thinking"]  { opacity: 0.15; animation: loRing 2s ease-in-out infinite; border-color: rgba(255,255,255,0.25); }
-.lo-ring[data-state="speaking"]  { opacity: 0.72; animation: loRingSpeaking 0.9s ease-in-out infinite; }
-@keyframes loRing         { 0%,100%{transform:scale(1)}    50%{transform:scale(1.13)} }
-@keyframes loRingSpeaking { 0%,100%{transform:scale(1.04);opacity:.72} 50%{transform:scale(1.22);opacity:.28} }
+.lo-ripple {
+  position: absolute; border-radius: 50%;
+  border: 1.5px solid rgba(184,76,46,0.2);
+  width: 140px; height: 140px;
+  animation: loRipple 2.8s ease-out infinite;
+  pointer-events: none;
+}
+.lo-ripple:nth-child(2) { width: 185px; height: 185px; animation-delay: 0.93s; }
+.lo-ripple:nth-child(3) { width: 230px; height: 230px; animation-delay: 1.86s; }
+@keyframes loRipple {
+  0%   { transform: scale(0.78); opacity: 0.7; }
+  100% { transform: scale(1);    opacity: 0; }
+}
 
-.lo-avatar-circle {
-  width: 92px; height: 92px; border-radius: 50%;
+.lo-orb {
+  width: 122px; height: 122px; border-radius: 50%;
   background: var(--accent);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 36px rgba(184,76,46,0.38);
-  transition: box-shadow 0.4s;
+  box-shadow: 0 0 32px rgba(184,76,46,0.32);
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+  position: relative; z-index: 2;
+  will-change: transform, box-shadow;
 }
-.lo-avatar-circle.speaking { box-shadow: 0 10px 52px rgba(184,76,46,0.68); }
+.lo-orb[data-state="thinking"] {
+  box-shadow: 0 0 18px rgba(184,76,46,0.16);
+  animation: loOrbThink 1.8s ease-in-out infinite;
+}
+.lo-orb[data-state="speaking"] {
+  box-shadow: 0 0 52px rgba(90,210,130,0.4), 0 0 22px rgba(90,210,130,0.15);
+}
+@keyframes loOrbThink {
+  0%,100% { opacity: 0.65; } 50% { opacity: 1; }
+}
 
 .lo-name {
-  font-family: 'Fraunces', serif; font-size: 21px; font-weight: 600;
-  letter-spacing: -0.3px; color: white; flex-shrink: 0;
+  font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600;
+  letter-spacing: -0.3px; color: white;
 }
-.lo-role { font-size: 12px; color: rgba(255,255,255,0.38); text-align: center; flex-shrink: 0; }
 .lo-status {
-  font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.5);
-  padding: 4px 16px; border-radius: 100px; flex-shrink: 0;
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-  transition: all 0.28s; text-align: center; min-width: 110px;
+  font-size: 13.5px; color: rgba(255,255,255,0.35);
+  height: 22px; display: flex; align-items: center;
+  transition: color 0.3s;
 }
-.lo-status.listening { color: rgba(255,140,120,0.95); border-color: rgba(194,57,42,0.38); background: rgba(194,57,42,0.1); }
-.lo-status.speaking  { color: rgba(100,215,140,0.95); border-color: rgba(61,122,79,0.38); background: rgba(61,122,79,0.1); }
+.lo-status.listening { color: rgba(255,140,120,0.88); }
+.lo-status.speaking  { color: rgba(100,215,140,0.88); }
 
-.lo-live-bar {
-  display: none; width: 100%; padding: 10px 15px;
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px; align-items: center; gap: 10px; flex-shrink: 0;
-  animation: rise 0.2s ease;
+/* Caption — last spoken line as subtitle */
+.lo-caption {
+  max-width: 310px; text-align: center;
+  font-size: 13px; color: rgba(255,255,255,0.26);
+  line-height: 1.55; min-height: 40px;
+  transition: opacity 0.35s;
 }
-.lo-live-bar.on { display: flex; }
-.lo-live-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #ff6b6b; flex-shrink: 0;
-  animation: pulse 1.4s ease-in-out infinite;
-}
-.lo-live-text { font-size: 14px; color: rgba(255,255,255,0.85); line-height: 1.45; flex: 1; }
-.lo-live-text.empty { color: rgba(255,255,255,0.32); font-style: italic; }
 
-.lo-transcript {
-  flex: 1; width: 100%; overflow-y: auto; min-height: 0;
-  display: flex; flex-direction: column; gap: 7px; padding: 4px 0;
-  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent;
+/* Bottom: end call */
+.lo-bottom {
+  flex-shrink: 0; display: flex; flex-direction: column;
+  align-items: center; gap: 9px;
 }
-.lo-transcript::-webkit-scrollbar { width: 3px; }
-.lo-transcript::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
-.lo-transcript .msg { max-width: 86%; }
-.lo-transcript .bubble { font-size: 13.5px; padding: 8px 13px; }
-.lo-transcript .msg.doctor .bubble {
-  background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.88);
+.lo-end-btn {
+  width: 62px; height: 62px; border-radius: 50%;
+  background: #b8352a; border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 4px 22px rgba(184,53,42,0.42);
 }
-.lo-transcript .msg.user .bubble {
-  background: rgba(184,76,46,0.2); color: rgba(255,255,255,0.88);
-}
-.lo-transcript .msg-label { color: rgba(255,255,255,0.28); }
-.lo-transcript .thinking .think-dot { background: rgba(255,255,255,0.45); }
-.lo-transcript .thinking { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.1); }
+.lo-end-btn:hover { background: #d04030; transform: scale(1.07); }
+.lo-end-btn svg { width: 22px; height: 22px; }
+.lo-end-label { font-size: 11.5px; color: rgba(255,255,255,0.26); letter-spacing: 0.3px; }
 
 
 </style>
@@ -1554,48 +1547,40 @@ body {
 
 <!-- ══════════ LIVE CALL OVERLAY ══════════ -->
 <div class="live-overlay" id="liveOverlay">
-  <div class="lo-header">
-    <div class="lo-brand">
-      <div class="lo-brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14">
-          <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
-          <path d="M12 7.5V19" stroke="rgba(255,140,120,1)" stroke-width="1.3" stroke-linecap="round"/>
-          <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="rgba(255,140,120,1)" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
-          <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="rgba(255,140,120,1)" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
-        </svg>
-      </div>
-      <div class="lo-brand-name">Vedic<em>AI</em></div>
-    </div>
-    <button class="lo-end-btn" onclick="endLiveMode()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 12 19.79 19.79 0 0 1 1.19 3.47 2 2 0 0 1 3.16 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.14 9.18"/>
-        <line x1="23" y1="1" x2="1" y2="23"/>
+  <div class="lo-topbar">
+    <div class="lo-topbar-info" id="loRole"></div>
+    <button class="lo-close-btn" onclick="endLiveMode()" aria-label="End call">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
       </svg>
-      End call
     </button>
   </div>
-  <div class="lo-body">
-    <div class="lo-avatar-zone">
-      <div class="lo-ring" id="loRing" data-state="idle"></div>
-      <div class="lo-avatar-circle" id="loAvatarCircle">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+  <div class="lo-center">
+    <div class="lo-orb-wrap">
+      <div class="lo-ripple"></div>
+      <div class="lo-ripple"></div>
+      <div class="lo-ripple"></div>
+      <div class="lo-orb" id="loAvatarCircle" data-state="idle">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="46" height="46">
           <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
           <path d="M12 7.5V19" stroke="rgba(184,76,46,1)" stroke-width="1.5" stroke-linecap="round"/>
           <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.72"/>
           <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.72"/>
-          <path d="M12 13.5c-1.8-.6-2.8 0-2.8.5" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
-          <path d="M12 13.5c1.8-.6 2.8 0 2.8.5" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
         </svg>
       </div>
     </div>
     <div class="lo-name">VedicAI</div>
-    <div class="lo-role" id="loRole">General physician · Ayurveda + modern</div>
     <div class="lo-status" id="loStatus">Connecting…</div>
-    <div class="lo-live-bar" id="loLiveBar">
-      <div class="lo-live-dot"></div>
-      <span class="lo-live-text empty" id="loLiveText">Listening…</span>
-    </div>
-    <div class="lo-transcript" id="loTranscript"></div>
+    <div class="lo-caption" id="loCaption"></div>
+  </div>
+  <div class="lo-bottom">
+    <button class="lo-end-btn" onclick="endLiveMode()" aria-label="End call">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 12 19.79 19.79 0 0 1 1.19 3.47 2 2 0 0 1 3.16 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.14 9.18"/>
+        <line x1="23" y1="1" x2="1" y2="23"/>
+      </svg>
+    </button>
+    <div class="lo-end-label">End call</div>
   </div>
 </div>
 
@@ -2405,7 +2390,7 @@ let liveAnalyser = null;
 let liveMicStream = null;
 let liveMediaRecorder = null;
 let liveChunks = [];
-let liveVadTimer = null;
+let liveWaveAnimId = null;
 let liveHasVoice = false;
 let liveVoiceStart = 0;
 let liveLastVoiceTime = 0;
@@ -2421,44 +2406,35 @@ function _setLoStatus(text, cls) {
   el.className = "lo-status" + (cls ? " " + cls : "");
 }
 function _setLoRing(s) {
-  const ring = document.getElementById("loRing");
-  const circ = document.getElementById("loAvatarCircle");
-  if (ring) ring.setAttribute("data-state", s);
-  if (circ) circ.classList.toggle("speaking", s === "speaking");
+  const orb = document.getElementById("loAvatarCircle");
+  if (orb) orb.setAttribute("data-state", s);
 }
-function _setLiveBarText(text, empty) {
-  const el = document.getElementById("loLiveText");
-  const bar = document.getElementById("loLiveBar");
-  if (!el || !bar) return;
-  if (empty || !text) {
-    el.textContent = "Listening…";
-    el.className = "lo-live-text empty";
-  } else {
-    el.textContent = text;
-    el.className = "lo-live-text";
-  }
+function _setLoCaption(text) {
+  const el = document.getElementById("loCaption");
+  if (el) el.textContent = text || "";
 }
 function _loAddMsg(role, text) {
-  const t = document.getElementById("loTranscript");
-  if (!t) return null;
-  const el = document.getElementById("loThinkingMsg"); if (el) el.remove();
-  const msg = document.createElement("div");
-  msg.className = `msg ${role}`;
-  msg.innerHTML = `<div class="msg-label">${role === "doctor" ? "VedicAI" : "You"}</div><div class="bubble"></div>`;
-  msg.querySelector(".bubble").textContent = text;
-  t.appendChild(msg);
-  t.scrollTop = t.scrollHeight;
-  return msg;
+  _setLoCaption((role === "doctor" ? "VedicAI" : "You") + ": " + text);
 }
 function _loAddThinking() {
-  const t = document.getElementById("loTranscript");
-  if (!t) return;
-  const el = document.getElementById("loThinkingMsg"); if (el) el.remove();
-  const msg = document.createElement("div");
-  msg.className = "msg doctor"; msg.id = "loThinkingMsg";
-  msg.innerHTML = `<div class="msg-label">VedicAI</div><div class="thinking"><span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span></div>`;
-  t.appendChild(msg);
-  t.scrollTop = t.scrollHeight;
+  _setLoCaption("VedicAI: …");
+}
+function _startOrbRaf() {
+  if (liveWaveAnimId) return;
+  const data = new Uint8Array(256);
+  function frame() {
+    if (!liveAnalyser || !liveMode) { liveWaveAnimId = null; return; }
+    liveWaveAnimId = requestAnimationFrame(frame);
+    liveAnalyser.getByteFrequencyData(data);
+    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+    const n = Math.min(avg / 32, 1);
+    const orb = document.getElementById("loAvatarCircle");
+    if (orb && orb.dataset.state === "listening") {
+      orb.style.transform = `scale(${1 + n * 0.16})`;
+      orb.style.boxShadow = `0 0 ${30 + n * 52}px rgba(184,76,46,${0.32 + n * 0.52})`;
+    }
+  }
+  liveWaveAnimId = requestAnimationFrame(frame);
 }
 
 function _teardownLiveSTT() {
@@ -2466,7 +2442,9 @@ function _teardownLiveSTT() {
   liveStarting = false;
   liveListening = false;
   liveHasVoice = false;
-  if (liveVadTimer) { clearInterval(liveVadTimer); liveVadTimer = null; }
+  if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
+  const orb = document.getElementById("loAvatarCircle");
+  if (orb) { orb.style.transform = ""; orb.style.boxShadow = ""; }
   if (liveMediaRecorder && liveMediaRecorder.state !== "inactive") {
     try { liveMediaRecorder.onstop = null; liveMediaRecorder.stop(); } catch(e) {}
   }
@@ -2475,9 +2453,6 @@ function _teardownLiveSTT() {
   liveAnalyser = null;
   if (liveAudioCtx) { try { liveAudioCtx.close(); } catch(e){} liveAudioCtx = null; }
   if (liveMicStream) { liveMicStream.getTracks().forEach(t => t.stop()); liveMicStream = null; }
-  const bar = document.getElementById("loLiveBar");
-  if (bar) bar.classList.remove("on");
-  _setLiveBarText("", true);
 }
 
 async function startLiveSTT() {
@@ -2552,7 +2527,7 @@ async function startLiveSTT() {
   state = "recording";
   _setLoStatus("Listening…", "listening");
   _setLoRing("listening");
-  _setLiveBarText("", true);
+  _startOrbRaf();
 
   const dataArray = new Uint8Array(liveAnalyser.frequencyBinCount);
   liveVadTimer = setInterval(() => {
@@ -2565,10 +2540,8 @@ async function startLiveSTT() {
         liveHasVoice = true;
         liveVoiceStart = Date.now();
         liveMediaRecorder.start(200);
-        document.getElementById("loLiveBar").classList.add("on");
       }
       liveLastVoiceTime = Date.now();
-      _setLiveBarText("Speaking…", false);
     } else if (liveHasVoice) {
       const silence = Date.now() - liveLastVoiceTime;
       const recorded = Date.now() - liveVoiceStart;
@@ -2576,7 +2549,6 @@ async function startLiveSTT() {
         liveListening = false;
         clearInterval(liveVadTimer);
         liveVadTimer = null;
-        _setLiveBarText("Processing…", false);
         liveMediaRecorder.stop();
       }
     }
@@ -2619,18 +2591,10 @@ function enterLiveMode() {
   liveMode = true;
   document.getElementById("liveOverlay").classList.add("on");
   const forLabel = selectedConsultingFor ? ` · for ${selectedConsultingFor.name}` : "";
-  document.getElementById("loRole").textContent = `General physician · Ayurveda + modern · ${selectedLang.name}${forLabel}`;
+  document.getElementById("loRole").textContent = `${selectedLang.name}${forLabel}`;
   _setLoStatus("Connecting…", "");
   _setLoRing("idle");
-  // Mirror existing convo into live transcript
-  const lt = document.getElementById("loTranscript");
-  lt.innerHTML = "";
-  document.querySelectorAll("#convo .msg").forEach(m => {
-    const clone = m.cloneNode(true);
-    lt.appendChild(clone);
-  });
-  lt.scrollTop = lt.scrollHeight;
-  // Start listening
+  _setLoCaption("");
   startLiveSTT();
 }
 
@@ -2638,9 +2602,9 @@ function endLiveMode() {
   liveMode = false;
   _teardownLiveSTT();
   document.getElementById("liveOverlay").classList.remove("on");
-  document.getElementById("loTranscript").innerHTML = "";
   _setLoRing("idle");
   _setLoStatus("Connecting…", "");
+  _setLoCaption("");
 }
 
 const $ = id => document.getElementById(id);
@@ -2703,10 +2667,14 @@ function setDoctorSpeaking(on) {
   wave.classList.toggle("on", on);
   if (liveMode) {
     _setLoRing(on ? "speaking" : (state === "recording" ? "listening" : "idle"));
-    const circ = document.getElementById("loAvatarCircle");
-    if (circ) circ.classList.toggle("speaking", on);
-    if (on) _setLoStatus("Speaking…", "speaking");
-    else if (state === "idle") { _setLoStatus("Listening…", "listening"); _setLoRing("listening"); }
+    if (on) {
+      _setLoStatus("Speaking…", "speaking");
+      const orb = document.getElementById("loAvatarCircle");
+      if (orb) { orb.style.transform = ""; orb.style.boxShadow = ""; }
+    } else if (state === "idle") {
+      _setLoStatus("Listening…", "listening");
+      _setLoRing("listening");
+    }
   }
 }
 function startTimer() {
@@ -3115,7 +3083,6 @@ async function streamChat(userText, myToken) {
         if (evt.event === "sentence") {
           if (!doctorMsgEl) {
             const t = $("thinkingMsg"); if (t) t.remove();
-            const lt = document.getElementById("loThinkingMsg"); if (lt) lt.remove();
             doctorMsgEl = document.createElement("div");
             doctorMsgEl.className = "msg doctor";
             doctorMsgEl.innerHTML = `
@@ -3129,19 +3096,7 @@ async function streamChat(userText, myToken) {
           }
           fullText = fullText ? fullText + " " + evt.data.text : evt.data.text;
           doctorBubble.textContent = fullText;
-          if (liveMode) {
-            // update or create live transcript mirror
-            let loMsg = document.getElementById("loCurrentDoctorMsg");
-            if (!loMsg) {
-              loMsg = document.createElement("div");
-              loMsg.className = "msg doctor"; loMsg.id = "loCurrentDoctorMsg";
-              loMsg.innerHTML = `<div class="msg-label">VedicAI</div><div class="bubble"></div>`;
-              document.getElementById("loTranscript").appendChild(loMsg);
-            }
-            loMsg.querySelector(".bubble").textContent = fullText;
-            const lt2 = document.getElementById("loTranscript");
-            if (lt2) lt2.scrollTop = lt2.scrollHeight;
-          }
+          if (liveMode) _setLoCaption("VedicAI: " + evt.data.text);
 
           if (evt.data.poses && evt.data.poses.length) {
             const strip = doctorMsgEl.querySelector(".pose-strip");
@@ -3193,8 +3148,6 @@ async function streamChat(userText, myToken) {
           convo.scrollTop = convo.scrollHeight;
         } else if (evt.event === "done") {
           if (doctorBubble) doctorBubble.classList.remove("streaming");
-          const loD = document.getElementById("loCurrentDoctorMsg");
-          if (loD) loD.removeAttribute("id");
           if (doctorMsgEl && doctorMsgEl._audioChunks && doctorMsgEl._audioChunks.length) {
             const btn = document.createElement("button");
             btn.className = "replay-btn";

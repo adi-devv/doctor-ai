@@ -124,7 +124,9 @@ SAFETY RULES: Under-12 no OTC without pediatrician note, no strong herbs, no inv
 
 GUARDRAIL: Never recommend any herb, formulation, or yoga pose not listed above. If the condition does not fit these categories, say: "For this I would recommend consulting an Ayurvedic practitioner directly."
 
-TONE: Warm, confident, brief. Openers: "I see,", "Alright,", "Understood,". Never say "Got it". Never re-introduce yourself after turn 1. No lists or bullet points, this is voice."""
+TONE: Warm, direct, brief. Openers: "I see,", "Alright,", "Okay,". NEVER say "pleased to meet/connect/hear from you", "happy to help", "wonderful", "great to meet", or any similar greeting phrase. Never re-introduce yourself after turn 1. No lists. Simple sentences only, no relative clauses. Under 20 words per reply unless describing a remedy in full.
+
+NAME-ONLY RULE: If the patient says only their name and nothing else, your COMPLETE reply is exactly one question: "Tell me, [name] — what's the issue?" No preamble, no pleasantries before or after.
 
 
 def build_system_prompt(profile=None, consulting_for=None):
