@@ -1248,6 +1248,143 @@ body {
 .member-dropdown-option.selected { color: var(--ink); }
 .member-dropdown-option svg { width: 13px; height: 13px; color: var(--accent); flex-shrink: 0; }
 
+/* ══════════════════════════════════════════════
+   LIVE BUTTON (header top-right)
+══════════════════════════════════════════════ */
+.live-btn {
+  display: none; align-items: center; gap: 6px;
+  padding: 6px 13px; border-radius: 100px;
+  border: 1.5px solid var(--accent); background: transparent;
+  color: var(--accent); font-family: 'Inter', sans-serif;
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: all 0.18s; letter-spacing: 0.2px;
+}
+.live-btn.visible { display: flex; }
+.live-btn:hover { background: var(--accent); color: white; }
+.live-btn-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+.live-btn:hover .live-btn-dot { background: white; }
+
+/* ══════════════════════════════════════════════
+   LIVE CALL OVERLAY
+══════════════════════════════════════════════ */
+.live-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(18,14,10,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: none; flex-direction: column;
+  align-items: center;
+}
+.live-overlay.on { display: flex; }
+
+.lo-header {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+.lo-brand { display: flex; align-items: center; gap: 9px; }
+.lo-brand-mark {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.lo-brand-name {
+  font-family: 'Fraunces', serif; font-weight: 600; font-size: 17px;
+  color: white; letter-spacing: -0.4px;
+}
+.lo-brand-name em { font-style: italic; color: rgba(255,160,130,1); font-weight: 500; }
+.lo-end-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 100px;
+  background: rgba(194,57,42,0.15); border: 1.5px solid rgba(194,57,42,0.45);
+  color: #ff8a7a; font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.18s;
+}
+.lo-end-btn:hover { background: var(--danger); border-color: var(--danger); color: white; }
+.lo-end-btn svg { width: 14px; height: 14px; }
+
+.lo-body {
+  flex: 1; width: 100%; display: flex; flex-direction: column;
+  align-items: center; overflow: hidden;
+  padding: 28px 20px 16px; gap: 10px;
+  max-width: 560px; margin: 0 auto;
+}
+
+.lo-avatar-zone { position: relative; margin-bottom: 6px; flex-shrink: 0; }
+.lo-ring {
+  position: absolute; inset: -16px; border-radius: 50%;
+  border: 2px solid var(--accent); opacity: 0;
+  pointer-events: none; transition: opacity 0.4s;
+}
+.lo-ring[data-state="idle"]      { opacity: 0.3;  animation: loRing 2.2s ease-in-out infinite; }
+.lo-ring[data-state="listening"] { opacity: 0.65; animation: loRing 1.4s ease-in-out infinite; }
+.lo-ring[data-state="thinking"]  { opacity: 0.15; animation: loRing 2s ease-in-out infinite; border-color: rgba(255,255,255,0.25); }
+.lo-ring[data-state="speaking"]  { opacity: 0.72; animation: loRingSpeaking 0.9s ease-in-out infinite; }
+@keyframes loRing         { 0%,100%{transform:scale(1)}    50%{transform:scale(1.13)} }
+@keyframes loRingSpeaking { 0%,100%{transform:scale(1.04);opacity:.72} 50%{transform:scale(1.22);opacity:.28} }
+
+.lo-avatar-circle {
+  width: 92px; height: 92px; border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 36px rgba(184,76,46,0.38);
+  transition: box-shadow 0.4s;
+}
+.lo-avatar-circle.speaking { box-shadow: 0 10px 52px rgba(184,76,46,0.68); }
+
+.lo-name {
+  font-family: 'Fraunces', serif; font-size: 21px; font-weight: 600;
+  letter-spacing: -0.3px; color: white; flex-shrink: 0;
+}
+.lo-role { font-size: 12px; color: rgba(255,255,255,0.38); text-align: center; flex-shrink: 0; }
+.lo-status {
+  font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.5);
+  padding: 4px 16px; border-radius: 100px; flex-shrink: 0;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.28s; text-align: center; min-width: 110px;
+}
+.lo-status.listening { color: rgba(255,140,120,0.95); border-color: rgba(194,57,42,0.38); background: rgba(194,57,42,0.1); }
+.lo-status.speaking  { color: rgba(100,215,140,0.95); border-color: rgba(61,122,79,0.38); background: rgba(61,122,79,0.1); }
+
+.lo-live-bar {
+  display: none; width: 100%; padding: 10px 15px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px; align-items: center; gap: 10px; flex-shrink: 0;
+  animation: rise 0.2s ease;
+}
+.lo-live-bar.on { display: flex; }
+.lo-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ff6b6b; flex-shrink: 0;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.lo-live-text { font-size: 14px; color: rgba(255,255,255,0.85); line-height: 1.45; flex: 1; }
+.lo-live-text.empty { color: rgba(255,255,255,0.32); font-style: italic; }
+
+.lo-transcript {
+  flex: 1; width: 100%; overflow-y: auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 7px; padding: 4px 0;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+.lo-transcript::-webkit-scrollbar { width: 3px; }
+.lo-transcript::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+.lo-transcript .msg { max-width: 86%; }
+.lo-transcript .bubble { font-size: 13.5px; padding: 8px 13px; }
+.lo-transcript .msg.doctor .bubble {
+  background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.88);
+}
+.lo-transcript .msg.user .bubble {
+  background: rgba(184,76,46,0.2); color: rgba(255,255,255,0.88);
+}
+.lo-transcript .msg-label { color: rgba(255,255,255,0.28); }
+.lo-transcript .thinking .think-dot { background: rgba(255,255,255,0.45); }
+.lo-transcript .thinking { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.1); }
 
 
 </style>
@@ -1299,15 +1436,23 @@ body {
       </button>
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
-        <path d="M12 2C12 2 4 6 4 13a8 8 0 0 0 16 0C20 6 12 2 12 2z" fill="white" opacity="0.9"/>
-        <path d="M12 8v10M9 11c1-2 3-3 3-3s2 1 3 3" stroke="#b84c2e" stroke-width="1.2" stroke-linecap="round"/>
-      </svg>
-    </div>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+            <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
+            <path d="M12 7.5V19" stroke="#b84c2e" stroke-width="1.3" stroke-linecap="round"/>
+            <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
+            <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
+            <path d="M12 13.5c-1.8-.6-2.8 0-2.8.5" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.45"/>
+            <path d="M12 13.5c1.8-.6 2.8 0 2.8.5" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.45"/>
+          </svg>
+        </div>
         <div class="brand-name">Vedic<em>AI</em></div>
       </div>
     </div>
     <div class="header-right">
+      <button class="live-btn" id="liveModeBtn" onclick="enterLiveMode()" title="Hands-free live call">
+        <span class="live-btn-dot"></span>
+        Live
+      </button>
       <div class="status-pill" id="statusPill">
         <div class="dot"></div>
         <span id="statusText">Pick a language</span>
@@ -1325,8 +1470,7 @@ body {
         </svg>
       </div>
       <div class="presence-text">
-        <div class="presence-name">VedicAI</div>
-        <div class="presence-sub" id="presenceSub">General physician · Ayurveda + modern</div>
+        <div class="presence-sub" id="presenceSub" style="font-size:13.5px;color:var(--ink);font-weight:500;margin-top:0">General physician · Ayurveda + modern</div>
       </div>
       <div class="wave" id="wave">
         <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
@@ -1384,11 +1528,13 @@ body {
   <div class="modal">
     <div class="modal-logo">
       <div class="brand-mark" style="width:22px;height:22px;" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13">
-        <path d="M12 2C12 2 4 6 4 13a8 8 0 0 0 16 0C20 6 12 2 12 2z" fill="white" opacity="0.9"/>
-        <path d="M12 8v10M9 11c1-2 3-3 3-3s2 1 3 3" stroke="#b84c2e" stroke-width="1.4" stroke-linecap="round"/>
-      </svg>
-    </div>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13">
+          <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
+          <path d="M12 7.5V19" stroke="#b84c2e" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
+          <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
+        </svg>
+      </div>
       <div class="brand-name" style="font-size:16px;">Vedic<em>AI</em></div>
     </div>
     <h2>Welcome</h2>
@@ -1403,6 +1549,53 @@ body {
     <div class="modal-skip">
       <button onclick="hideAuthModal()">Continue without account</button>
     </div>
+  </div>
+</div>
+
+<!-- ══════════ LIVE CALL OVERLAY ══════════ -->
+<div class="live-overlay" id="liveOverlay">
+  <div class="lo-header">
+    <div class="lo-brand">
+      <div class="lo-brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14">
+          <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
+          <path d="M12 7.5V19" stroke="rgba(255,140,120,1)" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="rgba(255,140,120,1)" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
+          <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="rgba(255,140,120,1)" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
+        </svg>
+      </div>
+      <div class="lo-brand-name">Vedic<em>AI</em></div>
+    </div>
+    <button class="lo-end-btn" onclick="endLiveMode()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 12 19.79 19.79 0 0 1 1.19 3.47 2 2 0 0 1 3.16 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.14 9.18"/>
+        <line x1="23" y1="1" x2="1" y2="23"/>
+      </svg>
+      End call
+    </button>
+  </div>
+  <div class="lo-body">
+    <div class="lo-avatar-zone">
+      <div class="lo-ring" id="loRing" data-state="idle"></div>
+      <div class="lo-avatar-circle" id="loAvatarCircle">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+          <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
+          <path d="M12 7.5V19" stroke="rgba(184,76,46,1)" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.72"/>
+          <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.72"/>
+          <path d="M12 13.5c-1.8-.6-2.8 0-2.8.5" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+          <path d="M12 13.5c1.8-.6 2.8 0 2.8.5" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+        </svg>
+      </div>
+    </div>
+    <div class="lo-name">VedicAI</div>
+    <div class="lo-role" id="loRole">General physician · Ayurveda + modern</div>
+    <div class="lo-status" id="loStatus">Connecting…</div>
+    <div class="lo-live-bar" id="loLiveBar">
+      <div class="lo-live-dot"></div>
+      <span class="lo-live-text empty" id="loLiveText">Listening…</span>
+    </div>
+    <div class="lo-transcript" id="loTranscript"></div>
   </div>
 </div>
 
@@ -1910,6 +2103,7 @@ async function loadChat(chatId) {
         setStatus("Connected", "active");
         startTimer();
         setMicState("idle", "Tap to speak");
+        document.getElementById("liveModeBtn").classList.add("visible");
         const forLabel = memberLabel ? ` · for ${memberLabel}` : "";
         $("presenceSub").textContent = `General physician · Ayurveda + modern · ${langName}${forLabel}`;
         // Lock member selector to reflect the stored state
@@ -2201,6 +2395,255 @@ let audioPlaybackQueue = [];
 let isPlayingAudio = false;
 let chatAbortController = null;
 
+// ─── Live mode state ───
+let liveMode = false;
+let liveWs = null;
+let liveAudioCtx = null;
+let liveProcessor = null;
+let liveMicStream = null;
+let liveAccumulated = "";
+let liveSubmitTimer = null;
+let liveAutoRestart = false;
+const LIVE_SUBMIT_DELAY_MS = 1800;
+
+function getWsUrl(path) {
+  const url = new URL(BACKEND_URL);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = path;
+  return url.toString();
+}
+
+function _setLoStatus(text, cls) {
+  const el = document.getElementById("loStatus");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "lo-status" + (cls ? " " + cls : "");
+}
+function _setLoRing(s) {
+  const ring = document.getElementById("loRing");
+  const circ = document.getElementById("loAvatarCircle");
+  if (ring) ring.setAttribute("data-state", s);
+  if (circ) circ.classList.toggle("speaking", s === "speaking");
+}
+function _setLiveBarText(text, empty) {
+  const el = document.getElementById("loLiveText");
+  const bar = document.getElementById("loLiveBar");
+  if (!el || !bar) return;
+  if (empty || !text) {
+    el.textContent = "Listening…";
+    el.className = "lo-live-text empty";
+  } else {
+    el.textContent = text;
+    el.className = "lo-live-text";
+  }
+}
+function _loAddMsg(role, text) {
+  const t = document.getElementById("loTranscript");
+  if (!t) return null;
+  const el = document.getElementById("loThinkingMsg"); if (el) el.remove();
+  const msg = document.createElement("div");
+  msg.className = `msg ${role}`;
+  msg.innerHTML = `<div class="msg-label">${role === "doctor" ? "VedicAI" : "You"}</div><div class="bubble"></div>`;
+  msg.querySelector(".bubble").textContent = text;
+  t.appendChild(msg);
+  t.scrollTop = t.scrollHeight;
+  return msg;
+}
+function _loAddThinking() {
+  const t = document.getElementById("loTranscript");
+  if (!t) return;
+  const el = document.getElementById("loThinkingMsg"); if (el) el.remove();
+  const msg = document.createElement("div");
+  msg.className = "msg doctor"; msg.id = "loThinkingMsg";
+  msg.innerHTML = `<div class="msg-label">VedicAI</div><div class="thinking"><span class="think-dot"></span><span class="think-dot"></span><span class="think-dot"></span></div>`;
+  t.appendChild(msg);
+  t.scrollTop = t.scrollHeight;
+}
+
+function _teardownLiveSTT() {
+  liveAutoRestart = false;
+  if (liveSubmitTimer) { clearTimeout(liveSubmitTimer); liveSubmitTimer = null; }
+  if (liveProcessor) { try { liveProcessor.disconnect(); } catch(e){} liveProcessor = null; }
+  if (liveAudioCtx) { try { liveAudioCtx.close(); } catch(e){} liveAudioCtx = null; }
+  if (liveMicStream) { liveMicStream.getTracks().forEach(t => t.stop()); liveMicStream = null; }
+  if (liveWs) { try { liveWs.close(); } catch(e){} liveWs = null; }
+  liveAccumulated = "";
+  const bar = document.getElementById("loLiveBar");
+  if (bar) bar.classList.remove("on");
+  _setLiveBarText("", true);
+}
+
+async function startLiveSTT() {
+  if (!selectedLang || state === "thinking" || state === "streaming") return;
+  if (currentTurns >= MAX_TURNS_PER_CHAT) return;
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
+  } catch (e) {
+    showToast("Mic access denied");
+    return;
+  }
+
+  stopAllAudio();
+  liveMicStream = stream;
+  liveAccumulated = "";
+
+  liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const nativeRate = liveAudioCtx.sampleRate;
+  const source = liveAudioCtx.createMediaStreamSource(stream);
+  liveProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
+  source.connect(liveProcessor);
+  liveProcessor.connect(liveAudioCtx.destination);
+
+  const wsUrl = getWsUrl("/ws/live") + "?sid=" + encodeURIComponent(clientSid);
+  liveWs = new WebSocket(wsUrl);
+  liveWs.binaryType = "arraybuffer";
+
+  liveWs.onopen = () => {
+    liveWs.send(JSON.stringify({ lang_code: selectedLang.code }));
+  };
+
+  liveWs.onmessage = (event) => {
+    if (typeof event.data !== "string") return;
+    let data;
+    try { data = JSON.parse(event.data); } catch { return; }
+    if (data.error) {
+      showToast("Voice error — retrying");
+      _teardownLiveSTT();
+      _setLoStatus("Listening…", "listening");
+      _setLoRing("listening");
+      state = "idle";
+      return;
+    }
+    const partial = (data.transcript || "").trim();
+    if (!partial) return;
+    const display = liveAccumulated ? liveAccumulated + " " + partial : partial;
+    _setLiveBarText(display, false);
+    if (data.is_final) {
+      liveAccumulated = (liveAccumulated + " " + partial).trim();
+      _setLiveBarText(liveAccumulated, false);
+      if (liveSubmitTimer) clearTimeout(liveSubmitTimer);
+      liveSubmitTimer = setTimeout(() => {
+        liveSubmitTimer = null;
+        const text = liveAccumulated.trim();
+        _teardownLiveSTT();
+        if (text) {
+          _runLiveChatTurn(text, sessionToken);
+        } else {
+          _setLoStatus("Listening…", "listening");
+          _setLoRing("listening");
+          state = "idle";
+        }
+      }, LIVE_SUBMIT_DELAY_MS);
+    }
+  };
+
+  liveWs.onerror = () => {
+    showToast("Voice connection failed");
+    _teardownLiveSTT();
+    _setLoStatus("Listening…", "listening");
+    _setLoRing("listening");
+    state = "idle";
+  };
+
+  liveWs.onclose = () => {
+    if (liveAccumulated.trim() && !liveSubmitTimer) {
+      const text = liveAccumulated.trim();
+      _teardownLiveSTT();
+      _runLiveChatTurn(text, sessionToken);
+    }
+  };
+
+  liveProcessor.onaudioprocess = (event) => {
+    if (!liveWs || liveWs.readyState !== WebSocket.OPEN) return;
+    const float32 = event.inputBuffer.getChannelData(0);
+    const ratio = nativeRate / 16000;
+    const outLen = Math.floor(float32.length / ratio);
+    const pcm16 = new Int16Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      const s = float32[Math.round(i * ratio)];
+      pcm16[i] = Math.max(-32768, Math.min(32767, Math.round(s * 32768)));
+    }
+    liveWs.send(pcm16.buffer);
+  };
+
+  setTimeout(() => {
+    if (liveWs && !liveAccumulated.trim()) {
+      _teardownLiveSTT();
+      _setLoStatus("Listening…", "listening");
+      _setLoRing("listening");
+      state = "idle";
+    }
+  }, 45000);
+
+  state = "recording";
+  _setLoStatus("Listening…", "listening");
+  _setLoRing("listening");
+  document.getElementById("loLiveBar").classList.add("on");
+  _setLiveBarText("", true);
+}
+
+async function _runLiveChatTurn(transcript, myToken) {
+  if (myToken !== sessionToken) return;
+  state = "streaming";
+  _setLoStatus("Thinking…", "");
+  _setLoRing("thinking");
+  _loAddMsg("user", transcript);
+  addMsg("user", transcript);
+  _loAddThinking();
+  addThinking();
+
+  const reply = await streamChat(transcript, myToken);
+
+  if (myToken === sessionToken) {
+    currentTurns++;
+    updateContextBar();
+    if (reply && (reply.local || reply.plan)) {
+      saveCurrentChat(transcript, reply.userEn, reply.local, reply.en, reply.plan);
+    }
+    liveAutoRestart = true;
+    if (!isPlayingAudio) {
+      liveAutoRestart = false;
+      state = "idle";
+      _setLoStatus("Listening…", "listening");
+      _setLoRing("listening");
+      startLiveSTT();
+    } else {
+      state = "idle";
+    }
+  }
+}
+
+function enterLiveMode() {
+  if (!selectedLang) { showToast("Choose a language first"); return; }
+  liveMode = true;
+  document.getElementById("liveOverlay").classList.add("on");
+  const forLabel = selectedConsultingFor ? ` · for ${selectedConsultingFor.name}` : "";
+  document.getElementById("loRole").textContent = `General physician · Ayurveda + modern · ${selectedLang.name}${forLabel}`;
+  _setLoStatus("Connecting…", "");
+  _setLoRing("idle");
+  // Mirror existing convo into live transcript
+  const lt = document.getElementById("loTranscript");
+  lt.innerHTML = "";
+  document.querySelectorAll("#convo .msg").forEach(m => {
+    const clone = m.cloneNode(true);
+    lt.appendChild(clone);
+  });
+  lt.scrollTop = lt.scrollHeight;
+  // Start listening
+  startLiveSTT();
+}
+
+function endLiveMode() {
+  liveMode = false;
+  _teardownLiveSTT();
+  document.getElementById("liveOverlay").classList.remove("on");
+  document.getElementById("loTranscript").innerHTML = "";
+  _setLoRing("idle");
+  _setLoStatus("Connecting…", "");
+}
+
 const $ = id => document.getElementById(id);
 const statusPill = $("statusPill"), statusText = $("statusText"), timer = $("timer");
 const convo = $("convo"), empty = $("empty");
@@ -2259,6 +2702,13 @@ function setMicState(s, label) {
 function setDoctorSpeaking(on) {
   avatar.classList.toggle("speaking", on);
   wave.classList.toggle("on", on);
+  if (liveMode) {
+    _setLoRing(on ? "speaking" : (state === "recording" ? "listening" : "idle"));
+    const circ = document.getElementById("loAvatarCircle");
+    if (circ) circ.classList.toggle("speaking", on);
+    if (on) _setLoStatus("Speaking…", "speaking");
+    else if (state === "idle") { _setLoStatus("Listening…", "listening"); _setLoRing("listening"); }
+  }
 }
 function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
@@ -2316,6 +2766,10 @@ async function playNextFromQueue() {
   if (audioPlaybackQueue.length === 0) {
     isPlayingAudio = false;
     setDoctorSpeaking(false);
+    if (liveMode && liveAutoRestart && selectedLang && state === "idle" && !liveWs) {
+      liveAutoRestart = false;
+      startLiveSTT();
+    }
     return;
   }
   isPlayingAudio = true;
@@ -2342,8 +2796,10 @@ function stopAllAudio() {
 // ─── Abort ───
 function abortEverything() {
   sessionToken++;
+  liveAutoRestart = false;
   if (chatAbortController) { chatAbortController.abort(); chatAbortController = null; }
   stopAllAudio();
+  _teardownLiveSTT();
   if (isRecording) {
     isRecording = false;
     if (silenceTimer) clearInterval(silenceTimer);
@@ -2447,6 +2903,7 @@ async function selectLanguage(lang, btn) {
   setStatus("Connected", "active");
   startTimer();
   setMicState("idle", "Tap to speak");
+  document.getElementById("liveModeBtn").classList.add("visible");
   (data.audios || []).forEach(enqueueAudio);
 }
 
@@ -2659,6 +3116,7 @@ async function streamChat(userText, myToken) {
         if (evt.event === "sentence") {
           if (!doctorMsgEl) {
             const t = $("thinkingMsg"); if (t) t.remove();
+            const lt = document.getElementById("loThinkingMsg"); if (lt) lt.remove();
             doctorMsgEl = document.createElement("div");
             doctorMsgEl.className = "msg doctor";
             doctorMsgEl.innerHTML = `
@@ -2672,6 +3130,19 @@ async function streamChat(userText, myToken) {
           }
           fullText = fullText ? fullText + " " + evt.data.text : evt.data.text;
           doctorBubble.textContent = fullText;
+          if (liveMode) {
+            // update or create live transcript mirror
+            let loMsg = document.getElementById("loCurrentDoctorMsg");
+            if (!loMsg) {
+              loMsg = document.createElement("div");
+              loMsg.className = "msg doctor"; loMsg.id = "loCurrentDoctorMsg";
+              loMsg.innerHTML = `<div class="msg-label">VedicAI</div><div class="bubble"></div>`;
+              document.getElementById("loTranscript").appendChild(loMsg);
+            }
+            loMsg.querySelector(".bubble").textContent = fullText;
+            const lt2 = document.getElementById("loTranscript");
+            if (lt2) lt2.scrollTop = lt2.scrollHeight;
+          }
 
           if (evt.data.poses && evt.data.poses.length) {
             const strip = doctorMsgEl.querySelector(".pose-strip");
@@ -2723,6 +3194,8 @@ async function streamChat(userText, myToken) {
           convo.scrollTop = convo.scrollHeight;
         } else if (evt.event === "done") {
           if (doctorBubble) doctorBubble.classList.remove("streaming");
+          const loD = document.getElementById("loCurrentDoctorMsg");
+          if (loD) loD.removeAttribute("id");
           if (doctorMsgEl && doctorMsgEl._audioChunks && doctorMsgEl._audioChunks.length) {
             const btn = document.createElement("button");
             btn.className = "replay-btn";
@@ -2764,6 +3237,7 @@ function parseSSE(raw) {
 
 // ─── End call ───
 function endCall() {
+  endLiveMode();
   abortEverything();
   stopTimer();
   fetch(`${BACKEND_URL}/reset`, { method: "POST", credentials: "include", headers: sidHeaders() }).catch(()=>{});
@@ -2771,6 +3245,7 @@ function endCall() {
   currentTurns = 0;
   unlockLangChips();
   unlockMemberSelector();
+  document.getElementById("liveModeBtn").classList.remove("visible");
   setStatus("Call ended", "ended");
   setMicState("disabled", "Pick a language to restart");
   presence.style.display = "none";
@@ -2847,6 +3322,7 @@ function switchPlanTab(btn, idx) {
 
 // ─── Reset to home (fresh chat landing) ───
 function resetToHome() {
+  endLiveMode();
   abortEverything();
   stopTimer();
   fetch(`${BACKEND_URL}/reset`, { method: "POST", credentials: "include", headers: sidHeaders() }).catch(()=>{});
@@ -2854,6 +3330,7 @@ function resetToHome() {
   currentTurns = 0;
   unlockLangChips();
   unlockMemberSelector();
+  document.getElementById("liveModeBtn").classList.remove("visible");
   setStatus("Pick a language");
   setMicState("disabled", "Choose a language first");
   presence.style.display = "none";

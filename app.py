@@ -7,12 +7,15 @@ import re
 import uuid
 import json
 import logging
+import threading
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from groq import Groq
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
+from flask_sock import Sock
+import websocket as _wsc
 
 load_dotenv()
 
@@ -26,6 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("vedicai")
 
 app = Flask(__name__)
+sock = Sock(app)
 CORS(
     app,
     origins=[
@@ -754,6 +758,86 @@ def change_language():
     resp = jsonify({"ok": True, "lang_code": lang})
     _set_sid_cookie(resp, sid)
     return resp
+
+
+@sock.route("/ws/live")
+def sarvam_live_proxy(client_ws):
+    """WebSocket proxy: browser PCM16 audio → Sarvam Live STT → browser transcripts."""
+    try:
+        raw = client_ws.receive(timeout=6)
+        if not raw:
+            return
+        cfg = json.loads(raw)
+    except Exception as e:
+        log.warning(f"ws/live: bad config: {e}")
+        return
+
+    lang = cfg.get("lang_code", "hi-IN")
+
+    sarvam = _wsc.WebSocket()
+    try:
+        sarvam.connect(
+            "wss://api.sarvam.ai/speech-to-text-streaming",
+            header={"api-subscription-key": SARVAM_API_KEY},
+        )
+        sarvam.send(json.dumps({"language_code": lang, "model": "saarika:v2.5"}))
+        log.info(f"ws/live: Sarvam connected lang={lang}")
+    except Exception as e:
+        log.error(f"ws/live: Sarvam connect failed: {e}")
+        try:
+            client_ws.send(json.dumps({"error": "sarvam_connect_failed"}))
+        except Exception:
+            pass
+        return
+
+    closed = threading.Event()
+
+    def _recv_from_sarvam():
+        try:
+            while not closed.is_set():
+                try:
+                    msg = sarvam.recv()
+                except Exception:
+                    break
+                if msg is None:
+                    break
+                text = msg if isinstance(msg, str) else msg.decode("utf-8", errors="replace")
+                try:
+                    client_ws.send(text)
+                except Exception:
+                    break
+        finally:
+            closed.set()
+            try:
+                sarvam.close()
+            except Exception:
+                pass
+
+    recv_thread = threading.Thread(target=_recv_from_sarvam, daemon=True)
+    recv_thread.start()
+
+    try:
+        while not closed.is_set():
+            try:
+                chunk = client_ws.receive(timeout=30)
+            except Exception:
+                break
+            if chunk is None:
+                break
+            try:
+                if isinstance(chunk, bytes):
+                    sarvam.send_binary(chunk)
+            except Exception:
+                break
+    finally:
+        closed.set()
+        try:
+            sarvam.close()
+        except Exception:
+            pass
+
+    recv_thread.join(timeout=2)
+    log.info("ws/live: session closed")
 
 
 @app.route("/transcribe", methods=["POST"])

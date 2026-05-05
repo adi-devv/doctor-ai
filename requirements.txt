@@ -1,6 +1,8 @@
 flask
 flask-cors
+flask-sock>=0.2
 groq
 requests
 python-dotenv
+websocket-client>=1.6
 gunicorn
