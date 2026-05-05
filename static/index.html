@@ -2388,15 +2388,9 @@ let liveAutoRestart = false;
 let liveAudioCtx = null;
 let liveAnalyser = null;
 let liveMicStream = null;
-let liveMediaRecorder = null;
-let liveChunks = [];
+let liveWs = null;
+let liveWorkletNode = null;
 let liveWaveAnimId = null;
-let liveHasVoice = false;
-let liveVoiceStart = 0;
-let liveLastVoiceTime = 0;
-const LIVE_SILENCE_MS = 1600;
-const LIVE_VOICE_THRESHOLD = 14;
-const LIVE_MAX_RECORD_MS = 30000;
 
 
 function _setLoStatus(text, cls) {
@@ -2438,121 +2432,111 @@ function _startOrbRaf() {
 }
 
 function _teardownLiveSTT() {
-  liveAutoRestart = false;
   liveStarting = false;
   liveListening = false;
-  liveHasVoice = false;
   if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
   const orb = document.getElementById("loAvatarCircle");
   if (orb) { orb.style.transform = ""; orb.style.boxShadow = ""; }
-  if (liveMediaRecorder && liveMediaRecorder.state !== "inactive") {
-    try { liveMediaRecorder.onstop = null; liveMediaRecorder.stop(); } catch(e) {}
-  }
-  liveMediaRecorder = null;
-  liveChunks = [];
+  if (liveWs) { try { liveWs.onclose = null; liveWs.onerror = null; liveWs.close(); } catch(e){} liveWs = null; }
+  if (liveWorkletNode) { try { liveWorkletNode.disconnect(); } catch(e){} liveWorkletNode = null; }
   liveAnalyser = null;
   if (liveAudioCtx) { try { liveAudioCtx.close(); } catch(e){} liveAudioCtx = null; }
   if (liveMicStream) { liveMicStream.getTracks().forEach(t => t.stop()); liveMicStream = null; }
 }
 
+// Inline AudioWorklet processor: Float32 mic → Int16 PCM sent to main thread
+const _WORKLET_SRC = `class P extends AudioWorkletProcessor{process(i){const c=i[0][0];if(c&&c.length){const b=new Int16Array(c.length);for(let j=0;j<c.length;j++){const s=Math.max(-1,Math.min(1,c[j]));b[j]=s<0?s*32768:s*32767;}this.port.postMessage(b.buffer,[b.buffer]);}return true;}}registerProcessor('pcm-proc',P);`;
+
 async function startLiveSTT() {
   if (liveListening || liveStarting) return;
+  if (!liveMode || !selectedLang) return;
+  if (state === "thinking" || state === "streaming") return;
+  if (currentTurns >= MAX_TURNS_PER_CHAT) return;
   liveStarting = true;
-  if (!selectedLang || state === "thinking" || state === "streaming") { liveStarting = false; return; }
-  if (currentTurns >= MAX_TURNS_PER_CHAT) { liveStarting = false; return; }
 
   let stream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (e) {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+  } catch(e) {
     liveStarting = false;
     showToast("Mic access denied");
     return;
   }
-  if (!liveMode) { liveStarting = false; stream.getTracks().forEach(t => t.stop()); return; }
+  if (!liveMode) { stream.getTracks().forEach(t => t.stop()); liveStarting = false; return; }
 
-  stopAllAudio();
   liveMicStream = stream;
-  liveChunks = [];
-  liveHasVoice = false;
-  liveLastVoiceTime = 0;
-
-  liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
   await liveAudioCtx.resume();
+
   const source = liveAudioCtx.createMediaStreamSource(stream);
   liveAnalyser = liveAudioCtx.createAnalyser();
   liveAnalyser.fftSize = 512;
   source.connect(liveAnalyser);
 
-  liveMediaRecorder = new MediaRecorder(stream);
-  liveMediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) liveChunks.push(e.data); };
-  liveMediaRecorder.onstop = async () => {
-    if (!liveMode) return;
-    const chunks = liveChunks.splice(0);
-    const mimeType = (liveMediaRecorder && liveMediaRecorder.mimeType) || "audio/webm";
-    _teardownLiveSTT();
-    const blob = new Blob(chunks, { type: mimeType });
-    if (blob.size < 1500) {
-      if (liveMode) setTimeout(() => { if (liveMode && !liveListening) startLiveSTT(); }, 300);
-      return;
-    }
-    _setLoStatus("Processing…", "");
-    _setLoRing("thinking");
-    const formData = new FormData();
-    formData.append("audio", blob, "live.webm");
-    formData.append("lang_code", selectedLang.code);
-    const headers = clientSid ? { "X-Session-Id": clientSid } : {};
-    try {
-      const resp = await fetch(BACKEND_URL + "/transcribe", { method: "POST", body: formData, headers });
-      const data = await resp.json();
-      const transcript = (data.transcript || "").trim();
-      if (transcript) {
-        _runLiveChatTurn(transcript, sessionToken);
-      } else {
-        _setLoStatus("Listening…", "listening");
-        _setLoRing("listening");
-        state = "idle";
-        if (liveMode) setTimeout(() => { if (liveMode && !liveListening) startLiveSTT(); }, 300);
-      }
-    } catch(e) {
-      _setLoStatus("Listening…", "listening");
-      _setLoRing("listening");
-      state = "idle";
-      if (liveMode) setTimeout(() => { if (liveMode && !liveListening) startLiveSTT(); }, 1500);
+  // Load AudioWorklet module via blob URL
+  const blobUrl = URL.createObjectURL(new Blob([_WORKLET_SRC], { type: 'application/javascript' }));
+  try { await liveAudioCtx.audioWorklet.addModule(blobUrl); } catch(e) {}
+  URL.revokeObjectURL(blobUrl);
+
+  liveWorkletNode = new AudioWorkletNode(liveAudioCtx, 'pcm-proc');
+  source.connect(liveWorkletNode);
+
+  // Open WebSocket proxy to Sarvam Live STT
+  const wsUrl = BACKEND_URL.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws/live';
+  const ws = new WebSocket(wsUrl);
+  liveWs = ws;
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ lang_code: selectedLang.code }));
+    liveStarting = false;
+    liveListening = true;
+    state = 'recording';
+    _setLoStatus('Listening…', 'listening');
+    _setLoRing('listening');
+    _startOrbRaf();
+  };
+
+  // Stream PCM16 chunks to Sarvam via backend proxy
+  liveWorkletNode.port.onmessage = (e) => {
+    if (ws.readyState === WebSocket.OPEN && liveListening) {
+      ws.send(e.data);
     }
   };
 
-  liveListening = true;
-  liveStarting = false;
-  state = "recording";
-  _setLoStatus("Listening…", "listening");
-  _setLoRing("listening");
-  _startOrbRaf();
+  ws.onmessage = (e) => {
+    if (!liveMode) return;
+    let msg;
+    try { msg = JSON.parse(typeof e.data === 'string' ? e.data : new TextDecoder().decode(e.data)); } catch(_) { return; }
+    if (msg.error) return;
+    // Support both {transcript, is_final} and {data:{transcript}, is_final}
+    const transcript = ((msg.transcript || (msg.data && msg.data.transcript)) || '').trim();
+    const isFinal = msg.is_final !== false; // treat missing is_final as final
+    if (!transcript) return;
 
-  const dataArray = new Uint8Array(liveAnalyser.frequencyBinCount);
-  liveVadTimer = setInterval(() => {
-    if (!liveListening || !liveAnalyser) { clearInterval(liveVadTimer); liveVadTimer = null; return; }
-    liveAnalyser.getByteFrequencyData(dataArray);
-    const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-
-    if (avg > LIVE_VOICE_THRESHOLD) {
-      if (!liveHasVoice) {
-        liveHasVoice = true;
-        liveVoiceStart = Date.now();
-        liveMediaRecorder.start(200);
-      }
-      liveLastVoiceTime = Date.now();
-    } else if (liveHasVoice) {
-      const silence = Date.now() - liveLastVoiceTime;
-      const recorded = Date.now() - liveVoiceStart;
-      if (silence > LIVE_SILENCE_MS || recorded > LIVE_MAX_RECORD_MS) {
-        liveListening = false;
-        clearInterval(liveVadTimer);
-        liveVadTimer = null;
-        liveMediaRecorder.stop();
-      }
+    if (!isFinal) {
+      _setLoCaption('You: ' + transcript + '…');
+      return;
     }
-  }, 80);
+    // Final transcript — tear down listening and run LLM turn
+    liveListening = false;
+    ws.onclose = null;
+    _teardownLiveSTT();
+    _setLoStatus('Processing…', '');
+    _setLoRing('thinking');
+    _setLoCaption('You: ' + transcript);
+    _runLiveChatTurn(transcript, sessionToken);
+  };
+
+  ws.onclose = () => {
+    if (!liveMode) return;
+    _teardownLiveSTT();
+    // Reconnect if still expecting to listen
+    if (state !== 'streaming' && state !== 'thinking') {
+      setTimeout(() => { if (liveMode && !liveListening) startLiveSTT(); }, 700);
+    }
+  };
+
+  ws.onerror = () => ws.close();
 }
 
 async function _runLiveChatTurn(transcript, myToken) {
