@@ -778,7 +778,7 @@ def sarvam_live_proxy(client_ws):
     try:
         sarvam.connect(
             "wss://api.sarvam.ai/speech-to-text-streaming",
-            header={"api-subscription-key": SARVAM_API_KEY},
+            header=[f"api-subscription-key: {SARVAM_API_KEY}"],
         )
         sarvam.send(json.dumps({"language_code": lang, "model": "saarika:v2.5"}))
         log.info(f"ws/live: Sarvam connected lang={lang}")

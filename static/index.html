@@ -1451,7 +1451,7 @@ body {
     <div class="header-right">
       <button class="live-btn" id="liveModeBtn" onclick="enterLiveMode()" title="Hands-free live call">
         <span class="live-btn-dot"></span>
-        Live
+        Go Live
       </button>
       <div class="status-pill" id="statusPill">
         <div class="dot"></div>
@@ -2474,6 +2474,7 @@ function _teardownLiveSTT() {
 }
 
 async function startLiveSTT() {
+  if (liveWs) return;
   if (!selectedLang || state === "thinking" || state === "streaming") return;
   if (currentTurns >= MAX_TURNS_PER_CHAT) return;
 
@@ -2509,11 +2510,11 @@ async function startLiveSTT() {
     let data;
     try { data = JSON.parse(event.data); } catch { return; }
     if (data.error) {
-      showToast("Voice error — retrying");
       _teardownLiveSTT();
-      _setLoStatus("Listening…", "listening");
-      _setLoRing("listening");
+      _setLoStatus("Reconnecting…", "");
+      _setLoRing("idle");
       state = "idle";
+      if (liveMode) setTimeout(() => { if (liveMode) startLiveSTT(); }, 2000);
       return;
     }
     const partial = (data.transcript || "").trim();
@@ -2540,11 +2541,11 @@ async function startLiveSTT() {
   };
 
   liveWs.onerror = () => {
-    showToast("Voice connection failed");
     _teardownLiveSTT();
-    _setLoStatus("Listening…", "listening");
-    _setLoRing("listening");
+    _setLoStatus("Reconnecting…", "");
+    _setLoRing("idle");
     state = "idle";
+    if (liveMode) setTimeout(() => { if (liveMode) startLiveSTT(); }, 2000);
   };
 
   liveWs.onclose = () => {
