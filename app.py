@@ -98,7 +98,7 @@ BODY TYPE GUIDANCE (use when known):
 - Anxious/irregular (Vata): favor warm, grounding remedies. Avoid raw foods, cold water.
 - Slow/heavy (Kapha): favor stimulating remedies. Favor ginger, Kapalbhati, light diet.
 
-PLAN TRIGGER: On your first substantive advice turn, silently append [GENERATE_PLAN] on its own line at the very end. Never include it again.
+PLAN OFFER: On your first substantive advice turn, silently append [OFFER_PLAN] on its own line at the very end. Never include it again.
 
 APPROVED REMEDIES (recommend only from this list, nothing else):
 
@@ -562,6 +562,33 @@ def tts_all(text, lang_code):
 
 
 # ────────────────────────────────────────────────────────────────────────────
+# Greeting cache — pre-warm translate+TTS for all languages at startup
+# ────────────────────────────────────────────────────────────────────────────
+_GREETING_EN = "Hello, I'm VedicAI. What's bothering you today?"
+_SUPPORTED_LANGS = ["hi-IN", "en-IN", "bn-IN", "pa-IN", "gu-IN", "ta-IN", "te-IN", "kn-IN", "ml-IN"]
+_GREETING_CACHE: dict = {}  # lang_code -> {"text": str, "audios": list}
+_GREETING_CACHE_LOCK = threading.Lock()
+
+
+def _warm_greeting_cache():
+    def _build(lang):
+        try:
+            text = translate(_GREETING_EN, "en-IN", lang) if lang != "en-IN" else _GREETING_EN
+            audios = tts_all(text, lang)
+            with _GREETING_CACHE_LOCK:
+                _GREETING_CACHE[lang] = {"text": text, "audios": audios}
+            log.info(f"greeting cache: warmed {lang}")
+        except Exception as e:
+            log.warning(f"greeting cache: failed {lang}: {e}")
+
+    list(_TTS_EXECUTOR.map(_build, _SUPPORTED_LANGS))
+    log.info("greeting cache: all languages ready")
+
+
+threading.Thread(target=_warm_greeting_cache, daemon=True, name="greeting-warmer").start()
+
+
+# ────────────────────────────────────────────────────────────────────────────
 # Streaming LLM
 # ────────────────────────────────────────────────────────────────────────────
 _EN_SENTENCE_END = re.compile(r"([.!?])\s+")
@@ -671,12 +698,14 @@ def set_language():
         sess["user_profile"] = data["user_profile"]
     if "consulting_for" in data:
         sess["consulting_for"] = data["consulting_for"]  # None clears it
-    greeting_en = "Hello, I'm VedicAI. What's bothering you today?"
-    greeting_local = (
-        translate(greeting_en, "en-IN", lang) if lang != "en-IN" else greeting_en
-    )
-    audios = tts_all(greeting_local, lang)
-    resp = jsonify({"text": greeting_local, "text_en": greeting_en, "audios": audios})
+    with _GREETING_CACHE_LOCK:
+        cached = _GREETING_CACHE.get(lang)
+    if cached:
+        greeting_local, audios = cached["text"], cached["audios"]
+    else:
+        greeting_local = translate(_GREETING_EN, "en-IN", lang) if lang != "en-IN" else _GREETING_EN
+        audios = tts_all(greeting_local, lang)
+    resp = jsonify({"text": greeting_local, "text_en": _GREETING_EN, "audios": audios})
     _set_sid_cookie(resp, sid)
     return resp
 
@@ -686,9 +715,10 @@ def greeting():
     """Return the translated greeting text only (no TTS, no session changes).
     Used when restoring a past chat to show the greeting without saving it in Firestore."""
     lang = request.args.get("lang_code", "en-IN")
-    text_en = "Hello, I'm VedicAI. What's bothering you today?"
-    text = translate(text_en, "en-IN", lang) if lang != "en-IN" else text_en
-    return jsonify({"text": text, "text_en": text_en})
+    with _GREETING_CACHE_LOCK:
+        cached = _GREETING_CACHE.get(lang)
+    text = cached["text"] if cached else (translate(_GREETING_EN, "en-IN", lang) if lang != "en-IN" else _GREETING_EN)
+    return jsonify({"text": text, "text_en": _GREETING_EN})
 
 
 @app.route("/restore_session", methods=["POST"])
@@ -783,7 +813,13 @@ def sarvam_live_proxy(client_ws):
             "wss://api.sarvam.ai/speech-to-text-streaming",
             header=[f"api-subscription-key: {SARVAM_API_KEY}"],
         )
-        sarvam.send(json.dumps({"language_code": lang, "model": "saarika:v2.5"}))
+        sarvam.send(json.dumps({
+            "language_code": lang,
+            "model": "saaras:v3",
+            "mode": "realtime_balanced",
+            "vad_signals": True,
+            "flush_signal": True,
+        }))
         log.info(f"ws/live: Sarvam connected lang={lang}")
     except Exception as e:
         log.error(f"ws/live: Sarvam connect failed: {e}")
@@ -816,8 +852,20 @@ def sarvam_live_proxy(client_ws):
             except Exception:
                 pass
 
+    def _keepalive_sarvam():
+        import time as _t
+        while not closed.is_set():
+            _t.sleep(15)
+            if closed.is_set():
+                break
+            try:
+                sarvam.ping()
+            except Exception:
+                break
+
     recv_thread = threading.Thread(target=_recv_from_sarvam, daemon=True)
     recv_thread.start()
+    threading.Thread(target=_keepalive_sarvam, daemon=True).start()
 
     try:
         while not closed.is_set():
@@ -931,7 +979,7 @@ def chat_stream():
             audio = tts_chunk(local, lang)
             return local, audio
 
-        plan_triggered = False
+        plan_offered = False
 
         def emit_sentence(en_sentence, local_text, audio):
             payload = {"text": local_text, "audio": audio}
@@ -941,9 +989,9 @@ def chat_stream():
             return sse("sentence", payload)
 
         for en_sentence in stream_llm_sentences(user_text_en, sess["history"], sess.get("user_profile"), sess.get("consulting_for")):
-            if "[GENERATE_PLAN]" in en_sentence:
-                plan_triggered = True
-                en_sentence = en_sentence.replace("[GENERATE_PLAN]", "").strip()
+            if "[OFFER_PLAN]" in en_sentence:
+                plan_offered = True
+                en_sentence = en_sentence.replace("[OFFER_PLAN]", "").strip()
                 if not en_sentence:
                     continue  # tag-only chunk, nothing to emit
             full_reply_en_parts.append(en_sentence)
@@ -964,29 +1012,16 @@ def chat_stream():
                 log.warning(f"tail sentence failed: {e}")
 
         full_reply_en = " ".join(full_reply_en_parts).strip()
-        if full_reply_en or plan_triggered:
+        if full_reply_en or plan_offered:
             sess["history"].append({"role": "user", "content": user_text_en})
             if full_reply_en:
                 sess["history"].append({"role": "assistant", "content": full_reply_en})
-            elif plan_triggered:
-                # Record the plan generation so the LLM knows it has already produced the plan
-                sess["history"].append({
-                    "role": "assistant",
-                    "content": "[Generated a structured daily recovery plan for the patient.]",
-                })
             sess["history"] = sess["history"][-(MAX_HISTORY_TURNS * 2) :]
             sess["turn_count"] = sess.get("turn_count", 0) + 1
 
-        if plan_triggered:
-            # Generate plan inline using the conversation history
-            history_summary = " ".join(
-                m["content"]
-                for m in sess["history"][-8:]
-                if m["role"] in ("user", "assistant")
-            )
-            plan_json = generate_plan_json(history_summary, lang)
-            if plan_json:
-                yield sse("plan", {"plan": plan_json})
+        if plan_offered:
+            # Ask the user — let them choose whether to generate the plan
+            yield sse("offer_plan", {})
 
         # Emit the English versions of this exchange so the client can persist both
         # local and English text in Firestore (dual-field save). Skip if nothing to save.
@@ -1011,6 +1046,23 @@ def reset():
     with SESSIONS_LOCK:
         SESSIONS.pop(sid, None)
     return jsonify({"ok": True})
+
+
+@app.route("/generate_plan", methods=["POST"])
+def generate_plan():
+    """Generate the recovery plan JSON on demand (user opted in from offer_plan prompt)."""
+    sid = get_or_create_sid()
+    sess = get_session(sid)
+    history_summary = " ".join(
+        m["content"]
+        for m in sess["history"][-8:]
+        if m["role"] in ("user", "assistant")
+    )
+    lang = sess.get("lang_code", "en-IN")
+    plan_json = generate_plan_json(history_summary, lang)
+    if not plan_json:
+        return jsonify({"error": "plan_failed"}), 500
+    return jsonify({"plan": plan_json})
 
 
 @app.route("/health")

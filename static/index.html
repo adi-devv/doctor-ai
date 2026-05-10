@@ -422,6 +422,19 @@ body {
 }
 .replay-btn:hover { color: var(--accent); }
 .replay-btn svg { width: 15px; height: 15px; }
+.plan-offer {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 4px 0 8px 0; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; font-size: 13px; color: var(--ink-soft);
+}
+.plan-offer-yes, .plan-offer-no {
+  border: none; border-radius: 8px; padding: 5px 12px;
+  font-size: 12px; cursor: pointer; transition: opacity 0.15s;
+}
+.plan-offer-yes { background: var(--accent); color: #fff; }
+.plan-offer-no { background: var(--border); color: var(--ink-soft); }
+.plan-offer-yes:hover, .plan-offer-no:hover { opacity: 0.8; }
 
 .empty {
   flex: 1; display: flex; flex-direction: column;
@@ -1428,16 +1441,6 @@ body {
         </svg>
       </button>
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
-            <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
-            <path d="M12 7.5V19" stroke="#b84c2e" stroke-width="1.3" stroke-linecap="round"/>
-            <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
-            <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.72"/>
-            <path d="M12 13.5c-1.8-.6-2.8 0-2.8.5" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.45"/>
-            <path d="M12 13.5c1.8-.6 2.8 0 2.8.5" stroke="#b84c2e" stroke-width="0.9" stroke-linecap="round" opacity="0.45"/>
-          </svg>
-        </div>
         <div class="brand-name">Vedic<em>AI</em></div>
       </div>
     </div>
@@ -1560,16 +1563,8 @@ body {
       <div class="lo-ripple"></div>
       <div class="lo-ripple"></div>
       <div class="lo-ripple"></div>
-      <div class="lo-orb" id="loAvatarCircle" data-state="idle">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="46" height="46">
-          <path d="M12 3C8.5 3 6 7 6 11.5c0 4.2 2.8 7.5 6 8.8 3.2-1.3 6-4.6 6-8.8C18 7 15.5 3 12 3z" fill="white" opacity="0.92"/>
-          <path d="M12 7.5V19" stroke="rgba(184,76,46,1)" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M12 10.5c-1.2-1-2.4-.7-3-.2" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.72"/>
-          <path d="M12 10.5c1.2-1 2.4-.7 3-.2" stroke="rgba(184,76,46,1)" stroke-width="1" stroke-linecap="round" opacity="0.72"/>
-        </svg>
-      </div>
+      <div class="lo-orb" id="loAvatarCircle" data-state="idle"></div>
     </div>
-    <div class="lo-name">VedicAI</div>
     <div class="lo-status" id="loStatus">Connecting…</div>
     <div class="lo-caption" id="loCaption"></div>
   </div>
@@ -2385,6 +2380,7 @@ let liveMode = false;
 let liveListening = false;
 let liveStarting = false;
 let liveAutoRestart = false;
+let liveSendingAudio = false;  // actively streaming PCM to Sarvam
 let liveAudioCtx = null;
 let liveAnalyser = null;
 let liveMicStream = null;
@@ -2431,76 +2427,81 @@ function _startOrbRaf() {
   liveWaveAnimId = requestAnimationFrame(frame);
 }
 
-function _teardownLiveSTT() {
-  liveStarting = false;
-  liveListening = false;
-  if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
-  const orb = document.getElementById("loAvatarCircle");
-  if (orb) { orb.style.transform = ""; orb.style.boxShadow = ""; }
-  if (liveWs) { try { liveWs.onclose = null; liveWs.onerror = null; liveWs.close(); } catch(e){} liveWs = null; }
+// Inline AudioWorklet processor: Float32 mic → Int16 PCM sent to main thread
+const _WORKLET_SRC = `class P extends AudioWorkletProcessor{process(i){const c=i[0][0];if(c&&c.length){const b=new Int16Array(c.length);for(let j=0;j<c.length;j++){const s=Math.max(-1,Math.min(1,c[j]));b[j]=s<0?s*32768:s*32767;}this.port.postMessage(b.buffer,[b.buffer]);}return true;}}registerProcessor('pcm-proc',P);`;
+
+// Set up mic + AudioContext + AudioWorklet once per live session.
+// Subsequent turns reuse this — only the WS reconnects.
+async function _setupLiveMic() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+  liveMicStream = stream;
+  liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  await liveAudioCtx.resume();
+  const source = liveAudioCtx.createMediaStreamSource(stream);
+  liveAnalyser = liveAudioCtx.createAnalyser();
+  liveAnalyser.fftSize = 512;
+  source.connect(liveAnalyser);
+  const blobUrl = URL.createObjectURL(new Blob([_WORKLET_SRC], { type: 'application/javascript' }));
+  try { await liveAudioCtx.audioWorklet.addModule(blobUrl); } catch(e) {}
+  URL.revokeObjectURL(blobUrl);
+  liveWorkletNode = new AudioWorkletNode(liveAudioCtx, 'pcm-proc');
+  source.connect(liveWorkletNode);
+  // liveSendingAudio gates whether PCM reaches Sarvam — toggled per turn, not per session
+  liveWorkletNode.port.onmessage = (e) => {
+    if (liveWs && liveWs.readyState === WebSocket.OPEN && liveSendingAudio) {
+      liveWs.send(e.data);
+    }
+  };
+}
+
+function _teardownLiveMic() {
   if (liveWorkletNode) { try { liveWorkletNode.disconnect(); } catch(e){} liveWorkletNode = null; }
   liveAnalyser = null;
   if (liveAudioCtx) { try { liveAudioCtx.close(); } catch(e){} liveAudioCtx = null; }
   if (liveMicStream) { liveMicStream.getTracks().forEach(t => t.stop()); liveMicStream = null; }
 }
 
-// Inline AudioWorklet processor: Float32 mic → Int16 PCM sent to main thread
-const _WORKLET_SRC = `class P extends AudioWorkletProcessor{process(i){const c=i[0][0];if(c&&c.length){const b=new Int16Array(c.length);for(let j=0;j<c.length;j++){const s=Math.max(-1,Math.min(1,c[j]));b[j]=s<0?s*32768:s*32767;}this.port.postMessage(b.buffer,[b.buffer]);}return true;}}registerProcessor('pcm-proc',P);`;
+// Closes WS and resets live flags — mic stays alive until endLiveMode().
+function _teardownLiveSTT() {
+  liveStarting = false;
+  liveListening = false;
+  liveSendingAudio = false;
+  if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
+  const orb = document.getElementById("loAvatarCircle");
+  if (orb) { orb.style.transform = ""; orb.style.boxShadow = ""; }
+  if (liveWs) { try { liveWs.onclose = null; liveWs.onerror = null; liveWs.close(); } catch(e){} liveWs = null; }
+}
 
-async function startLiveSTT() {
-  if (liveListening || liveStarting) return;
-  if (!liveMode || !selectedLang) return;
-  if (state === "thinking" || state === "streaming") return;
-  if (currentTurns >= MAX_TURNS_PER_CHAT) return;
-  liveStarting = true;
-
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
-  } catch(e) {
-    liveStarting = false;
-    showToast("Mic access denied");
-    return;
-  }
-  if (!liveMode) { stream.getTracks().forEach(t => t.stop()); liveStarting = false; return; }
-
-  liveMicStream = stream;
-  liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-  await liveAudioCtx.resume();
-
-  const source = liveAudioCtx.createMediaStreamSource(stream);
-  liveAnalyser = liveAudioCtx.createAnalyser();
-  liveAnalyser.fftSize = 512;
-  source.connect(liveAnalyser);
-
-  // Load AudioWorklet module via blob URL
-  const blobUrl = URL.createObjectURL(new Blob([_WORKLET_SRC], { type: 'application/javascript' }));
-  try { await liveAudioCtx.audioWorklet.addModule(blobUrl); } catch(e) {}
-  URL.revokeObjectURL(blobUrl);
-
-  liveWorkletNode = new AudioWorkletNode(liveAudioCtx, 'pcm-proc');
-  source.connect(liveWorkletNode);
-
-  // Open WebSocket proxy to Sarvam Live STT
-  const wsUrl = BACKEND_URL.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws/live';
-  const ws = new WebSocket(wsUrl);
-  liveWs = ws;
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ lang_code: selectedLang.code }));
-    liveStarting = false;
+// Resume listening after AI finishes — reuse the open WS if alive, else reconnect.
+function _resumeLiveListening() {
+  if (!liveMode || liveListening) return;
+  if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+    liveSendingAudio = true;
     liveListening = true;
     state = 'recording';
     _setLoStatus('Listening…', 'listening');
     _setLoRing('listening');
     _startOrbRaf();
-  };
+  } else {
+    _openLiveWS();
+  }
+}
 
-  // Stream PCM16 chunks to Sarvam via backend proxy
-  liveWorkletNode.port.onmessage = (e) => {
-    if (ws.readyState === WebSocket.OPEN && liveListening) {
-      ws.send(e.data);
-    }
+function _openLiveWS() {
+  const wsUrl = BACKEND_URL.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws/live';
+  const ws = new WebSocket(wsUrl);
+  liveWs = ws;
+
+  ws.onopen = () => {
+    if (!liveMode) { ws.close(); return; }
+    ws.send(JSON.stringify({ lang_code: selectedLang.code }));
+    liveStarting = false;
+    liveListening = true;
+    liveSendingAudio = true;
+    state = 'recording';
+    _setLoStatus('Listening…', 'listening');
+    _setLoRing('listening');
+    _startOrbRaf();
   };
 
   ws.onmessage = (e) => {
@@ -2508,19 +2509,39 @@ async function startLiveSTT() {
     let msg;
     try { msg = JSON.parse(typeof e.data === 'string' ? e.data : new TextDecoder().decode(e.data)); } catch(_) { return; }
     if (msg.error) return;
-    // Support both {transcript, is_final} and {data:{transcript}, is_final}
-    const transcript = ((msg.transcript || (msg.data && msg.data.transcript)) || '').trim();
-    const isFinal = msg.is_final !== false; // treat missing is_final as final
-    if (!transcript) return;
 
+    // Saaras VAD signal events
+    if (msg.type === 'events' && msg.data?.signal_type) {
+      if (msg.data.signal_type === 'START_SPEECH') {
+        _setLoStatus('Listening…', 'listening');
+        _setLoRing('listening');
+        _startOrbRaf();
+      } else if (msg.data.signal_type === 'END_SPEECH') {
+        liveSendingAudio = false;
+        if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
+        const orbEl = document.getElementById('loAvatarCircle');
+        if (orbEl) { orbEl.style.transform = ''; orbEl.style.boxShadow = ''; }
+        try { ws.send(JSON.stringify({ type: 'flush' })); } catch(_) {}
+        _setLoStatus('Processing…', '');
+        _setLoRing('thinking');
+      }
+      return;
+    }
+
+    // Transcript data — supports both saarika {transcript, is_final} and saaras {type:"data", data:{transcript}}
+    const transcript = ((msg.data?.transcript) || msg.transcript || '').trim();
+    if (!transcript) return;
+    const isFinal = !liveSendingAudio || msg.is_final === true || (msg.type === 'data');
     if (!isFinal) {
       _setLoCaption('You: ' + transcript + '…');
       return;
     }
-    // Final transcript — tear down listening and run LLM turn
+
+    // Final — process LLM turn; WS stays open for next turn
     liveListening = false;
-    ws.onclose = null;
-    _teardownLiveSTT();
+    if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
+    const orbEl = document.getElementById('loAvatarCircle');
+    if (orbEl) { orbEl.style.transform = ''; orbEl.style.boxShadow = ''; }
     _setLoStatus('Processing…', '');
     _setLoRing('thinking');
     _setLoCaption('You: ' + transcript);
@@ -2529,14 +2550,38 @@ async function startLiveSTT() {
 
   ws.onclose = () => {
     if (!liveMode) return;
-    _teardownLiveSTT();
-    // Reconnect if still expecting to listen
+    liveListening = false;
+    liveStarting = false;
+    liveSendingAudio = false;
+    // WS died — reconnect only when not mid-turn
     if (state !== 'streaming' && state !== 'thinking') {
-      setTimeout(() => { if (liveMode && !liveListening) startLiveSTT(); }, 700);
+      setTimeout(() => { if (liveMode && !liveListening) _openLiveWS(); }, 400);
     }
   };
 
   ws.onerror = () => ws.close();
+}
+
+async function startLiveSTT() {
+  if (liveListening || liveStarting) return;
+  if (!liveMode || !selectedLang) return;
+  if (state === 'thinking' || state === 'streaming') return;
+  if (currentTurns >= MAX_TURNS_PER_CHAT) return;
+  liveStarting = true;
+
+  // Mic setup: once per live session
+  if (!liveAudioCtx) {
+    try {
+      await _setupLiveMic();
+    } catch(e) {
+      liveStarting = false;
+      showToast('Mic access denied');
+      return;
+    }
+    if (!liveMode) { _teardownLiveMic(); liveStarting = false; return; }
+  }
+
+  _openLiveWS();
 }
 
 async function _runLiveChatTurn(transcript, myToken) {
@@ -2561,9 +2606,7 @@ async function _runLiveChatTurn(transcript, myToken) {
     if (!isPlayingAudio) {
       liveAutoRestart = false;
       state = "idle";
-      _setLoStatus("Listening…", "listening");
-      _setLoRing("listening");
-      startLiveSTT();
+      _resumeLiveListening();
     } else {
       state = "idle";
     }
@@ -2585,6 +2628,7 @@ function enterLiveMode() {
 function endLiveMode() {
   liveMode = false;
   _teardownLiveSTT();
+  _teardownLiveMic();
   document.getElementById("liveOverlay").classList.remove("on");
   _setLoRing("idle");
   _setLoStatus("Connecting…", "");
@@ -2719,7 +2763,7 @@ async function playNextFromQueue() {
     setDoctorSpeaking(false);
     if (liveMode && liveAutoRestart && selectedLang && state === "idle" && !liveListening) {
       liveAutoRestart = false;
-      startLiveSTT();
+      _resumeLiveListening();
     }
     return;
   }
@@ -3109,6 +3153,40 @@ async function streamChat(userText, myToken) {
         } else if (evt.event === "exchange_en") {
           userTextEn  = evt.data.user_en  || "";
           fullReplyEn = evt.data.reply_en || "";
+        } else if (evt.event === "offer_plan") {
+          // Show a non-intrusive prompt below the last doctor message
+          const offer = document.createElement("div");
+          offer.className = "plan-offer";
+          offer.innerHTML = `<span>Want a personalized recovery plan?</span>
+            <button class="plan-offer-yes">Yes, create it</button>
+            <button class="plan-offer-no">No thanks</button>`;
+          convo.appendChild(offer);
+          convo.scrollTop = convo.scrollHeight;
+          offer.querySelector(".plan-offer-yes").onclick = async () => {
+            offer.innerHTML = `<span style="opacity:.6">Generating plan…</span>`;
+            try {
+              const r = await fetch(BACKEND_URL + "/generate_plan", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Session-Id": sessionToken },
+                credentials: "include"
+              });
+              const d = await r.json();
+              if (d.plan) {
+                offer.remove();
+                const wrapper = document.createElement("div");
+                wrapper.className = "msg doctor";
+                wrapper.innerHTML = `<div class="msg-label">VedicAI</div><div class="bubble">Here's your wellness plan:</div>`;
+                wrapper.appendChild(renderPlanCard(d.plan));
+                convo.appendChild(wrapper);
+                convo.scrollTop = convo.scrollHeight;
+              } else {
+                offer.innerHTML = `<span style="color:var(--danger)">Couldn't generate plan. Try again later.</span>`;
+              }
+            } catch(e) {
+              offer.innerHTML = `<span style="color:var(--danger)">Network error. Try again.</span>`;
+            }
+          };
+          offer.querySelector(".plan-offer-no").onclick = () => offer.remove();
         } else if (evt.event === "plan") {
           const thinkEl = $("thinkingMsg"); if (thinkEl) thinkEl.remove();
           if (!doctorMsgEl) {
