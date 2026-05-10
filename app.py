@@ -581,7 +581,13 @@ def _warm_greeting_cache():
         except Exception as e:
             log.warning(f"greeting cache: failed {lang}: {e}")
 
-    list(_TTS_EXECUTOR.map(_build, _SUPPORTED_LANGS))
+    # Use plain threads so _build can freely call tts_all() (which uses _TTS_EXECUTOR)
+    # without deadlocking — nested executor.map() would block all workers waiting on each other.
+    threads = [threading.Thread(target=_build, args=(lang,), daemon=True) for lang in _SUPPORTED_LANGS]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
     log.info("greeting cache: all languages ready")
 
 
