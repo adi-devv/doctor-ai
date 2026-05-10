@@ -2852,9 +2852,22 @@ async function selectLanguage(lang, btn) {
   const forLabel = selectedConsultingFor ? ` · for ${selectedConsultingFor.name}` : "";
   $("presenceSub").textContent = `General physician · Ayurveda + modern · ${lang.name}${forLabel}`;
   convo.innerHTML = "";
-  addThinking();
   updateContextBar();
   lockMemberSelector();
+
+  // Show cached greeting instantly while session initialises in background
+  const cachedText = localStorage.getItem(`vedic_greet_${lang.code}`);
+  let cachedAudios = null;
+  try { cachedAudios = JSON.parse(localStorage.getItem(`vedic_greet_audios_${lang.code}`)); } catch(_) {}
+
+  if (cachedText && cachedAudios?.length) {
+    addMsg("doctor", cachedText);
+    setStatus("Connected", "active");
+    startTimer();
+    cachedAudios.forEach(enqueueAudio);
+  } else {
+    addThinking();
+  }
 
   let data;
   try {
@@ -2876,7 +2889,6 @@ async function selectLanguage(lang, btn) {
     });
     data = await res.json();
   } catch (e) {
-    // Reset to a clean state so the user can tap the chip again
     selectedLang = null;
     document.querySelectorAll(".lang-chip").forEach(b => b.classList.remove("active"));
     unlockLangChips();
@@ -2889,17 +2901,26 @@ async function selectLanguage(lang, btn) {
   }
   if (myToken !== sessionToken) return;
 
-  const t = $("thinkingMsg"); if (t) t.remove();
-  addMsg("doctor", data.text);
-  // Keep the freshly-translated greeting cached so past-chat loads are instant
+  // If we showed the thinking spinner (no cache), now show the real greeting
+  if (!cachedText || !cachedAudios?.length) {
+    const t = $("thinkingMsg"); if (t) t.remove();
+    addMsg("doctor", data.text);
+    setStatus("Connected", "active");
+    startTimer();
+    (data.audios || []).forEach(enqueueAudio);
+  }
+
+  // Session is ready — enable mic
+  setMicState("idle", "Tap to speak");
+  document.getElementById("liveModeBtn").classList.add("visible");
+
+  // Persist for next time (text + audio)
   if (lang?.code && data.text) {
     localStorage.setItem(`vedic_greet_${lang.code}`, data.text);
   }
-  setStatus("Connected", "active");
-  startTimer();
-  setMicState("idle", "Tap to speak");
-  document.getElementById("liveModeBtn").classList.add("visible");
-  (data.audios || []).forEach(enqueueAudio);
+  if (lang?.code && data.audios?.length) {
+    try { localStorage.setItem(`vedic_greet_audios_${lang.code}`, JSON.stringify(data.audios)); } catch(_) {}
+  }
 }
 
 async function changeLanguage(lang, btn) {
