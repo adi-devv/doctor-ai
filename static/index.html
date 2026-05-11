@@ -1282,21 +1282,21 @@ body {
 .live-btn:hover .live-btn-dot { background: white; }
 
 /* ══════════════════════════════════════════════
-   LIVE CALL OVERLAY — clean minimal orb
+   LIVE CALL OVERLAY — text conversation style
 ══════════════════════════════════════════════ */
 .live-overlay {
   position: fixed; inset: 0; z-index: 50;
   background: #0d0b09;
-  background-image: radial-gradient(ellipse 65% 42% at 50% 32%, rgba(184,76,46,0.09) 0%, transparent 68%);
   display: none; flex-direction: column;
-  align-items: center; justify-content: space-between;
-  padding: 16px 22px 38px;
 }
 .live-overlay.on { display: flex; }
 
 .lo-topbar {
-  width: 100%; display: flex; align-items: center;
-  justify-content: space-between; flex-shrink: 0;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px 13px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
 }
 .lo-brand {
   font-family: 'Fraunces', serif; font-size: 14.5px; font-weight: 600;
@@ -1316,67 +1316,57 @@ body {
 }
 .lo-close-btn:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.65); }
 
-.lo-center {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 14px;
+/* Scrollable conversation transcript */
+.lo-transcript {
+  flex: 1; overflow-y: auto;
+  padding: 22px 22px 8px;
+  display: flex; flex-direction: column;
+  gap: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.07) transparent;
+}
+.lo-transcript::-webkit-scrollbar { width: 3px; }
+.lo-transcript::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); }
+
+.lo-msg { display: flex; flex-direction: column; gap: 3px; max-width: 88%; animation: rise 0.22s ease-out; }
+.lo-msg.doctor { align-self: flex-start; }
+.lo-msg.user { align-self: flex-end; align-items: flex-end; }
+.lo-msg-label {
+  font-size: 10.5px; color: rgba(255,255,255,0.22); font-weight: 500;
+  letter-spacing: 0.4px; padding: 0 2px;
+}
+.lo-msg-bubble {
+  font-size: 15px; line-height: 1.55;
+  color: rgba(255,255,255,0.72);
+}
+.lo-msg.user .lo-msg-bubble { color: rgba(255,255,255,0.92); }
+
+/* Thinking dots in transcript */
+.lo-thinking-dots { display: flex; gap: 5px; align-items: center; padding: 4px 2px; }
+.lo-thinking-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  animation: thinkDot 1.2s ease-in-out infinite;
+}
+.lo-thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+.lo-thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Live partial transcript (streaming user speech) */
+.lo-live-caption {
+  padding: 4px 22px 8px;
+  font-size: 13px; color: rgba(255,255,255,0.28);
+  line-height: 1.45; min-height: 26px;
+  flex-shrink: 0; font-style: italic;
 }
 
-/* Orb with subtle ripple rings */
-.lo-orb-wrap {
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
-  width: 196px; height: 196px;
+/* Bottom bar: status indicator + end button */
+.lo-statusbar {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 22px 30px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
 }
-.lo-ripple {
-  position: absolute; border-radius: 50%;
-  border: 1px solid rgba(184,76,46,0.16);
-  pointer-events: none;
-  animation: loRipple 3.2s ease-out infinite;
-}
-.lo-ripple:nth-child(1) { width: 136px; height: 136px; }
-.lo-ripple:nth-child(2) { width: 186px; height: 186px; animation-delay: 1.6s; }
-@keyframes loRipple {
-  0%   { transform: scale(0.8); opacity: 0.65; }
-  100% { transform: scale(1);   opacity: 0; }
-}
-
-.lo-orb {
-  width: 104px; height: 104px; border-radius: 50%;
-  background: var(--accent);
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 26px rgba(184,76,46,0.28);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
-  position: relative; z-index: 2;
-  will-change: transform, box-shadow;
-}
-.lo-orb[data-state="thinking"] {
-  box-shadow: 0 0 12px rgba(184,76,46,0.14);
-  animation: loOrbThink 1.9s ease-in-out infinite;
-}
-.lo-orb[data-state="speaking"] {
-  box-shadow: 0 0 44px rgba(184,76,46,0.56), 0 0 16px rgba(184,76,46,0.22);
-  animation: loOrbSpeak 1.1s ease-in-out infinite;
-}
-.lo-orb[data-state="listening"] {
-  box-shadow: 0 0 34px rgba(184,76,46,0.44);
-}
-@keyframes loOrbThink {
-  0%,100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.015); }
-}
-@keyframes loOrbSpeak {
-  0%,100% { transform: scale(1); }
-  50% { transform: scale(1.038); }
-}
-
-.lo-name {
-  font-family: 'Fraunces', serif; font-size: 23px; font-weight: 600;
-  letter-spacing: -0.4px; color: rgba(255,255,255,0.9);
-  margin-top: 2px;
-}
-.lo-name em { font-style: italic; color: rgba(220,140,100,0.85); }
-
 .lo-status {
   font-size: 13px; color: rgba(255,255,255,0.3);
   display: flex; align-items: center; gap: 7px;
@@ -1391,22 +1381,12 @@ body {
 .lo-status.speaking  { color: rgba(255,195,135,0.85); }
 .lo-status.speaking::before { animation: pulse 0.9s ease-in-out infinite; }
 
-.lo-caption {
-  max-width: 295px; text-align: center;
-  font-size: 12.5px; color: rgba(255,255,255,0.24);
-  line-height: 1.55; min-height: 36px;
-}
-
-/* Bottom: end call only */
-.lo-bottom {
-  flex-shrink: 0;
-}
 .lo-end-btn {
-  width: 56px; height: 56px; border-radius: 50%;
+  width: 50px; height: 50px; border-radius: 50%;
   background: #b52a21; border: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: background 0.18s, transform 0.18s;
-  box-shadow: 0 4px 20px rgba(181,42,33,0.4);
+  box-shadow: 0 4px 16px rgba(181,42,33,0.38); flex-shrink: 0;
 }
 .lo-end-btn:hover { background: #cc3530; transform: scale(1.07); }
 .lo-end-btn:active { transform: scale(0.95); }
@@ -1579,17 +1559,10 @@ body {
       </svg>
     </button>
   </div>
-  <div class="lo-center">
-    <div class="lo-orb-wrap">
-      <div class="lo-ripple"></div>
-      <div class="lo-ripple"></div>
-      <div class="lo-orb" id="loAvatarCircle" data-state="idle"></div>
-    </div>
-    <div class="lo-name">Vedic<em>AI</em></div>
+  <div class="lo-transcript" id="loTranscript"></div>
+  <div class="lo-live-caption" id="loCaption"></div>
+  <div class="lo-statusbar">
     <div class="lo-status" id="loStatus">Connecting…</div>
-    <div class="lo-caption" id="loCaption"></div>
-  </div>
-  <div class="lo-bottom">
     <button class="lo-end-btn" onclick="endLiveMode()" aria-label="End call">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 12 19.79 19.79 0 0 1 1.19 3.47 2 2 0 0 1 3.16 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.14 9.18"/>
@@ -2407,6 +2380,8 @@ let liveMicStream = null;
 let liveWs = null;
 let liveWorkletNode = null;
 let liveWaveAnimId = null;
+let _loThinkingEl = null;
+let _loDoctorLiveMsgEl = null;
 
 
 function _setLoStatus(text, cls) {
@@ -2415,37 +2390,66 @@ function _setLoStatus(text, cls) {
   el.textContent = text;
   el.className = "lo-status" + (cls ? " " + cls : "");
 }
-function _setLoRing(s) {
-  const orb = document.getElementById("loAvatarCircle");
-  if (orb) orb.setAttribute("data-state", s);
-}
+function _setLoRing(s) {}
 function _setLoCaption(text) {
   const el = document.getElementById("loCaption");
   if (el) el.textContent = text || "";
 }
 function _loAddMsg(role, text) {
-  _setLoCaption((role === "doctor" ? "VedicAI" : "You") + ": " + text);
+  const t = document.getElementById("loTranscript");
+  if (!t) return;
+  const row = document.createElement("div");
+  row.className = "lo-msg " + role;
+  const label = document.createElement("div");
+  label.className = "lo-msg-label";
+  label.textContent = role === "doctor" ? "VedicAI" : "You";
+  const bubble = document.createElement("div");
+  bubble.className = "lo-msg-bubble";
+  bubble.textContent = text;
+  row.appendChild(label);
+  row.appendChild(bubble);
+  t.appendChild(row);
+  t.scrollTop = t.scrollHeight;
 }
 function _loAddThinking() {
-  _setLoCaption("VedicAI: …");
+  if (_loThinkingEl) return;
+  const t = document.getElementById("loTranscript");
+  if (!t) return;
+  const row = document.createElement("div");
+  row.className = "lo-msg doctor";
+  const label = document.createElement("div");
+  label.className = "lo-msg-label";
+  label.textContent = "VedicAI";
+  const bubble = document.createElement("div");
+  bubble.className = "lo-msg-bubble";
+  bubble.innerHTML = '<span class="lo-thinking-dots"><span class="lo-thinking-dot"></span><span class="lo-thinking-dot"></span><span class="lo-thinking-dot"></span></span>';
+  row.appendChild(label);
+  row.appendChild(bubble);
+  t.appendChild(row);
+  t.scrollTop = t.scrollHeight;
+  _loThinkingEl = row;
 }
-function _startOrbRaf() {
-  if (liveWaveAnimId) return;
-  const data = new Uint8Array(256);
-  function frame() {
-    if (!liveAnalyser || !liveMode) { liveWaveAnimId = null; return; }
-    liveWaveAnimId = requestAnimationFrame(frame);
-    liveAnalyser.getByteFrequencyData(data);
-    const avg = data.reduce((a, b) => a + b, 0) / data.length;
-    const n = Math.min(avg / 32, 1);
-    const orb = document.getElementById("loAvatarCircle");
-    if (orb && orb.dataset.state === "listening") {
-      orb.style.transform = `scale(${1 + n * 0.16})`;
-      orb.style.boxShadow = `0 0 ${30 + n * 52}px rgba(184,76,46,${0.32 + n * 0.52})`;
-    }
+function _loStreamSentence(text) {
+  const t = document.getElementById("loTranscript");
+  if (!t) return;
+  if (_loThinkingEl) { _loThinkingEl.remove(); _loThinkingEl = null; }
+  if (!_loDoctorLiveMsgEl) {
+    const row = document.createElement("div");
+    row.className = "lo-msg doctor";
+    const label = document.createElement("div");
+    label.className = "lo-msg-label";
+    label.textContent = "VedicAI";
+    const bubble = document.createElement("div");
+    bubble.className = "lo-msg-bubble";
+    row.appendChild(label);
+    row.appendChild(bubble);
+    t.appendChild(row);
+    _loDoctorLiveMsgEl = bubble;
   }
-  liveWaveAnimId = requestAnimationFrame(frame);
+  _loDoctorLiveMsgEl.textContent = (_loDoctorLiveMsgEl.textContent ? _loDoctorLiveMsgEl.textContent + " " : "") + text;
+  t.scrollTop = t.scrollHeight;
 }
+function _startOrbRaf() {}
 
 // Inline AudioWorklet processor: Float32 mic → Int16 PCM sent to main thread
 const _WORKLET_SRC = `class P extends AudioWorkletProcessor{process(i){const c=i[0][0];if(c&&c.length){const b=new Int16Array(c.length);for(let j=0;j<c.length;j++){const s=Math.max(-1,Math.min(1,c[j]));b[j]=s<0?s*32768:s*32767;}this.port.postMessage(b.buffer,[b.buffer]);}return true;}}registerProcessor('pcm-proc',P);`;
@@ -2487,8 +2491,6 @@ function _teardownLiveSTT() {
   liveListening = false;
   liveSendingAudio = false;
   if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
-  const orb = document.getElementById("loAvatarCircle");
-  if (orb) { orb.style.transform = ""; orb.style.boxShadow = ""; }
   if (liveWs) { try { liveWs.onclose = null; liveWs.onerror = null; liveWs.close(); } catch(e){} liveWs = null; }
 }
 
@@ -2539,8 +2541,6 @@ function _openLiveWS() {
       } else if (msg.data.signal_type === 'END_SPEECH') {
         liveSendingAudio = false;
         if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
-        const orbEl = document.getElementById('loAvatarCircle');
-        if (orbEl) { orbEl.style.transform = ''; orbEl.style.boxShadow = ''; }
         try { ws.send(JSON.stringify({ type: 'flush' })); } catch(_) {}
         _setLoStatus('Processing…', '');
         _setLoRing('thinking');
@@ -2565,8 +2565,6 @@ function _openLiveWS() {
     // Final — start LLM turn; WS stays open for next turn
     liveListening = false;
     if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
-    const orbEl = document.getElementById('loAvatarCircle');
-    if (orbEl) { orbEl.style.transform = ''; orbEl.style.boxShadow = ''; }
     _setLoStatus('Processing…', '');
     _setLoRing('thinking');
     _setLoCaption('You: ' + transcript);
@@ -2615,6 +2613,7 @@ async function _runLiveChatTurn(transcript, myToken) {
   _setLoStatus("Thinking…", "");
   _setLoRing("thinking");
   _loAddMsg("user", transcript);
+  _setLoCaption("");
   addMsg("user", transcript);
   _loAddThinking();
   addThinking();
@@ -2644,6 +2643,9 @@ function enterLiveMode() {
   document.getElementById("liveOverlay").classList.add("on");
   const forLabel = selectedConsultingFor ? ` · for ${selectedConsultingFor.name}` : "";
   document.getElementById("loRole").textContent = `${selectedLang.name}${forLabel}`;
+  const loT = document.getElementById("loTranscript");
+  if (loT) loT.innerHTML = "";
+  _loThinkingEl = null; _loDoctorLiveMsgEl = null;
   _setLoCaption("");
   if (isPlayingAudio) {
     // Greeting is still speaking — defer mic/WS setup until audio finishes.
@@ -2663,9 +2665,9 @@ function endLiveMode() {
   _teardownLiveSTT();
   _teardownLiveMic();
   document.getElementById("liveOverlay").classList.remove("on");
-  _setLoRing("idle");
   _setLoStatus("Connecting…", "");
   _setLoCaption("");
+  _loThinkingEl = null; _loDoctorLiveMsgEl = null;
 }
 
 const $ = id => document.getElementById(id);
@@ -2730,8 +2732,6 @@ function setDoctorSpeaking(on) {
     _setLoRing(on ? "speaking" : (state === "recording" ? "listening" : "idle"));
     if (on) {
       _setLoStatus("Speaking…", "speaking");
-      const orb = document.getElementById("loAvatarCircle");
-      if (orb) { orb.style.transform = ""; orb.style.boxShadow = ""; }
     } else if (state === "idle") {
       _setLoStatus("Listening…", "listening");
       _setLoRing("listening");
@@ -3178,7 +3178,7 @@ async function streamChat(userText, myToken) {
           }
           fullText = fullText ? fullText + " " + evt.data.text : evt.data.text;
           doctorBubble.textContent = fullText;
-          if (liveMode) _setLoCaption("VedicAI: " + evt.data.text);
+          if (liveMode) _loStreamSentence(evt.data.text);
 
           if (evt.data.poses && evt.data.poses.length) {
             const strip = doctorMsgEl.querySelector(".pose-strip");
@@ -3264,6 +3264,7 @@ async function streamChat(userText, myToken) {
           convo.scrollTop = convo.scrollHeight;
         } else if (evt.event === "done") {
           if (doctorBubble) doctorBubble.classList.remove("streaming");
+          if (liveMode) { _loDoctorLiveMsgEl = null; }
           if (doctorMsgEl && doctorMsgEl._audioChunks && doctorMsgEl._audioChunks.length) {
             const btn = document.createElement("button");
             btn.className = "replay-btn";
