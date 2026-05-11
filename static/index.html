@@ -2548,16 +2548,21 @@ function _openLiveWS() {
       return;
     }
 
-    // Transcript data — supports both saarika {transcript, is_final} and saaras {type:"data", data:{transcript}}
+    // Transcript data — saaras sends {type:"data", data:{transcript, is_final}}
+    //                    saarika sends {transcript, is_final}
     const transcript = ((msg.data?.transcript) || msg.transcript || '').trim();
     if (!transcript) return;
-    const isFinal = !liveSendingAudio || msg.is_final === true || (msg.type === 'data');
+    // isFinal: explicit is_final flag OR post-END_SPEECH (!liveSendingAudio) fallback for flush responses
+    const isFinal = msg.data?.is_final === true || msg.is_final === true || !liveSendingAudio;
     if (!isFinal) {
       _setLoCaption('You: ' + transcript + '…');
       return;
     }
 
-    // Final — process LLM turn; WS stays open for next turn
+    // Prevent duplicate turns if multiple final messages arrive before we finish processing
+    if (!liveListening) return;
+
+    // Final — start LLM turn; WS stays open for next turn
     liveListening = false;
     if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
     const orbEl = document.getElementById('loAvatarCircle');
