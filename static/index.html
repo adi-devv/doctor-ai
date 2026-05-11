@@ -1282,14 +1282,15 @@ body {
 .live-btn:hover .live-btn-dot { background: white; }
 
 /* ══════════════════════════════════════════════
-   LIVE CALL OVERLAY — minimal orb style
+   LIVE CALL OVERLAY — clean minimal orb
 ══════════════════════════════════════════════ */
 .live-overlay {
   position: fixed; inset: 0; z-index: 50;
-  background: #0c0a08;
+  background: #0d0b09;
+  background-image: radial-gradient(ellipse 65% 42% at 50% 32%, rgba(184,76,46,0.09) 0%, transparent 68%);
   display: none; flex-direction: column;
   align-items: center; justify-content: space-between;
-  padding: 18px 20px 32px;
+  padding: 16px 22px 38px;
 }
 .live-overlay.on { display: flex; }
 
@@ -1297,100 +1298,119 @@ body {
   width: 100%; display: flex; align-items: center;
   justify-content: space-between; flex-shrink: 0;
 }
-.lo-topbar-info {
-  font-size: 11.5px; color: rgba(255,255,255,0.25);
+.lo-brand {
+  font-family: 'Fraunces', serif; font-size: 14.5px; font-weight: 600;
+  letter-spacing: -0.3px; color: rgba(255,255,255,0.4);
+}
+.lo-brand em { font-style: italic; color: rgba(184,76,46,0.82); }
+.lo-topbar-lang {
+  font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.22);
   letter-spacing: 0.2px;
 }
 .lo-close-btn {
-  width: 34px; height: 34px; border-radius: 50%;
+  width: 30px; height: 30px; border-radius: 50%;
   background: rgba(255,255,255,0.07); border: none;
-  color: rgba(255,255,255,0.38); cursor: pointer;
+  color: rgba(255,255,255,0.32); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.18s;
 }
-.lo-close-btn:hover { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.7); }
+.lo-close-btn:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.65); }
 
 .lo-center {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 16px;
+  gap: 14px;
 }
 
-/* Orb with ripple rings */
+/* Orb with subtle ripple rings */
 .lo-orb-wrap {
   position: relative;
   display: flex; align-items: center; justify-content: center;
-  width: 240px; height: 240px;
+  width: 196px; height: 196px;
 }
 .lo-ripple {
   position: absolute; border-radius: 50%;
-  border: 1.5px solid rgba(184,76,46,0.2);
-  width: 140px; height: 140px;
-  animation: loRipple 2.8s ease-out infinite;
+  border: 1px solid rgba(184,76,46,0.16);
   pointer-events: none;
+  animation: loRipple 3.2s ease-out infinite;
 }
-.lo-ripple:nth-child(2) { width: 185px; height: 185px; animation-delay: 0.93s; }
-.lo-ripple:nth-child(3) { width: 230px; height: 230px; animation-delay: 1.86s; }
+.lo-ripple:nth-child(1) { width: 136px; height: 136px; }
+.lo-ripple:nth-child(2) { width: 186px; height: 186px; animation-delay: 1.6s; }
 @keyframes loRipple {
-  0%   { transform: scale(0.78); opacity: 0.7; }
-  100% { transform: scale(1);    opacity: 0; }
+  0%   { transform: scale(0.8); opacity: 0.65; }
+  100% { transform: scale(1);   opacity: 0; }
 }
 
 .lo-orb {
-  width: 122px; height: 122px; border-radius: 50%;
+  width: 104px; height: 104px; border-radius: 50%;
   background: var(--accent);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 32px rgba(184,76,46,0.32);
-  transition: box-shadow 0.12s ease, transform 0.12s ease;
+  box-shadow: 0 0 26px rgba(184,76,46,0.28);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
   position: relative; z-index: 2;
   will-change: transform, box-shadow;
 }
 .lo-orb[data-state="thinking"] {
-  box-shadow: 0 0 18px rgba(184,76,46,0.16);
-  animation: loOrbThink 1.8s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(184,76,46,0.14);
+  animation: loOrbThink 1.9s ease-in-out infinite;
 }
 .lo-orb[data-state="speaking"] {
-  box-shadow: 0 0 52px rgba(90,210,130,0.4), 0 0 22px rgba(90,210,130,0.15);
+  box-shadow: 0 0 44px rgba(184,76,46,0.56), 0 0 16px rgba(184,76,46,0.22);
+  animation: loOrbSpeak 1.1s ease-in-out infinite;
+}
+.lo-orb[data-state="listening"] {
+  box-shadow: 0 0 34px rgba(184,76,46,0.44);
 }
 @keyframes loOrbThink {
-  0%,100% { opacity: 0.65; } 50% { opacity: 1; }
+  0%,100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.015); }
+}
+@keyframes loOrbSpeak {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.038); }
 }
 
 .lo-name {
-  font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600;
-  letter-spacing: -0.3px; color: white;
+  font-family: 'Fraunces', serif; font-size: 23px; font-weight: 600;
+  letter-spacing: -0.4px; color: rgba(255,255,255,0.9);
+  margin-top: 2px;
 }
+.lo-name em { font-style: italic; color: rgba(220,140,100,0.85); }
+
 .lo-status {
-  font-size: 13.5px; color: rgba(255,255,255,0.35);
-  height: 22px; display: flex; align-items: center;
+  font-size: 13px; color: rgba(255,255,255,0.3);
+  display: flex; align-items: center; gap: 7px;
   transition: color 0.3s;
 }
-.lo-status.listening { color: rgba(255,140,120,0.88); }
-.lo-status.speaking  { color: rgba(100,215,140,0.88); }
+.lo-status::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0; opacity: 0.75;
+}
+.lo-status.listening { color: rgba(255,145,105,0.88); }
+.lo-status.listening::before { animation: pulse 2s infinite; }
+.lo-status.speaking  { color: rgba(255,195,135,0.85); }
+.lo-status.speaking::before { animation: pulse 0.9s ease-in-out infinite; }
 
-/* Caption — last spoken line as subtitle */
 .lo-caption {
-  max-width: 310px; text-align: center;
-  font-size: 13px; color: rgba(255,255,255,0.26);
-  line-height: 1.55; min-height: 40px;
-  transition: opacity 0.35s;
+  max-width: 295px; text-align: center;
+  font-size: 12.5px; color: rgba(255,255,255,0.24);
+  line-height: 1.55; min-height: 36px;
 }
 
-/* Bottom: end call */
+/* Bottom: end call only */
 .lo-bottom {
-  flex-shrink: 0; display: flex; flex-direction: column;
-  align-items: center; gap: 9px;
+  flex-shrink: 0;
 }
 .lo-end-btn {
-  width: 62px; height: 62px; border-radius: 50%;
-  background: #b8352a; border: none;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #b52a21; border: none;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.2s, transform 0.2s;
-  box-shadow: 0 4px 22px rgba(184,53,42,0.42);
+  cursor: pointer; transition: background 0.18s, transform 0.18s;
+  box-shadow: 0 4px 20px rgba(181,42,33,0.4);
 }
-.lo-end-btn:hover { background: #d04030; transform: scale(1.07); }
-.lo-end-btn svg { width: 22px; height: 22px; }
-.lo-end-label { font-size: 11.5px; color: rgba(255,255,255,0.26); letter-spacing: 0.3px; }
+.lo-end-btn:hover { background: #cc3530; transform: scale(1.07); }
+.lo-end-btn:active { transform: scale(0.95); }
+.lo-end-btn svg { width: 20px; height: 20px; }
 
 
 </style>
@@ -1551,9 +1571,10 @@ body {
 <!-- ══════════ LIVE CALL OVERLAY ══════════ -->
 <div class="live-overlay" id="liveOverlay">
   <div class="lo-topbar">
-    <div class="lo-topbar-info" id="loRole"></div>
+    <div class="lo-brand">Vedic<em>AI</em></div>
+    <div class="lo-topbar-lang" id="loRole"></div>
     <button class="lo-close-btn" onclick="endLiveMode()" aria-label="End call">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
       </svg>
     </button>
@@ -1562,9 +1583,9 @@ body {
     <div class="lo-orb-wrap">
       <div class="lo-ripple"></div>
       <div class="lo-ripple"></div>
-      <div class="lo-ripple"></div>
       <div class="lo-orb" id="loAvatarCircle" data-state="idle"></div>
     </div>
+    <div class="lo-name">Vedic<em>AI</em></div>
     <div class="lo-status" id="loStatus">Connecting…</div>
     <div class="lo-caption" id="loCaption"></div>
   </div>
@@ -1575,7 +1596,6 @@ body {
         <line x1="23" y1="1" x2="1" y2="23"/>
       </svg>
     </button>
-    <div class="lo-end-label">End call</div>
   </div>
 </div>
 
@@ -2472,7 +2492,7 @@ function _teardownLiveSTT() {
   if (liveWs) { try { liveWs.onclose = null; liveWs.onerror = null; liveWs.close(); } catch(e){} liveWs = null; }
 }
 
-// Resume listening after AI finishes — reuse the open WS if alive, else reconnect.
+// Resume listening after AI finishes — reuse the open WS if alive, else start fresh (handles mic setup too).
 function _resumeLiveListening() {
   if (!liveMode || liveListening) return;
   if (liveWs && liveWs.readyState === WebSocket.OPEN) {
@@ -2483,7 +2503,7 @@ function _resumeLiveListening() {
     _setLoRing('listening');
     _startOrbRaf();
   } else {
-    _openLiveWS();
+    startLiveSTT();
   }
 }
 
@@ -2619,10 +2639,18 @@ function enterLiveMode() {
   document.getElementById("liveOverlay").classList.add("on");
   const forLabel = selectedConsultingFor ? ` · for ${selectedConsultingFor.name}` : "";
   document.getElementById("loRole").textContent = `${selectedLang.name}${forLabel}`;
-  _setLoStatus("Connecting…", "");
-  _setLoRing("idle");
   _setLoCaption("");
-  startLiveSTT();
+  if (isPlayingAudio) {
+    // Greeting is still speaking — defer mic/WS setup until audio finishes.
+    // getUserMedia mid-audio interrupts playback on many browsers.
+    liveAutoRestart = true;
+    _setLoStatus("Speaking…", "speaking");
+    _setLoRing("speaking");
+  } else {
+    _setLoStatus("Connecting…", "");
+    _setLoRing("idle");
+    startLiveSTT();
+  }
 }
 
 function endLiveMode() {
@@ -3188,7 +3216,7 @@ async function streamChat(userText, myToken) {
             try {
               const r = await fetch(BACKEND_URL + "/generate_plan", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "X-Session-Id": sessionToken },
+                headers: sidHeaders({ "Content-Type": "application/json" }),
                 credentials: "include"
               });
               const d = await r.json();

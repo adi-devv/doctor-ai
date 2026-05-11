@@ -1031,7 +1031,7 @@ def chat_stream():
 
         # Emit the English versions of this exchange so the client can persist both
         # local and English text in Firestore (dual-field save). Skip if nothing to save.
-        if full_reply_en or plan_triggered:
+        if full_reply_en or plan_offered:
             yield sse("exchange_en", {
                 "user_en": user_text_en,
                 "reply_en": full_reply_en,
