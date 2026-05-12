@@ -884,6 +884,8 @@ def sarvam_live_proxy(client_ws):
             try:
                 if isinstance(chunk, bytes):
                     sarvam.send_binary(chunk)
+                elif isinstance(chunk, str):
+                    sarvam.send(chunk)  # forward flush + other JSON control messages
             except Exception:
                 break
     finally:
