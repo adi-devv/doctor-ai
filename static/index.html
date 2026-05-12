@@ -2637,15 +2637,38 @@ async function _runLiveChatTurn(transcript, myToken) {
   }
 }
 
+function _loSyncHistory() {
+  const loT = document.getElementById("loTranscript");
+  if (!loT) return;
+  loT.innerHTML = "";
+  const msgs = document.querySelectorAll("#convo .msg");
+  msgs.forEach(m => {
+    const isDoctor = m.classList.contains("doctor");
+    const bubble = m.querySelector(".bubble");
+    if (!bubble || !bubble.textContent.trim()) return;
+    const row = document.createElement("div");
+    row.className = "lo-msg " + (isDoctor ? "doctor" : "user");
+    const label = document.createElement("div");
+    label.className = "lo-msg-label";
+    label.textContent = isDoctor ? "VedicAI" : "You";
+    const bub = document.createElement("div");
+    bub.className = "lo-msg-bubble";
+    bub.textContent = bubble.textContent.trim();
+    row.appendChild(label);
+    row.appendChild(bub);
+    loT.appendChild(row);
+  });
+  loT.scrollTop = loT.scrollHeight;
+}
+
 function enterLiveMode() {
   if (!selectedLang) { showToast("Choose a language first"); return; }
   liveMode = true;
   document.getElementById("liveOverlay").classList.add("on");
   const forLabel = selectedConsultingFor ? ` · for ${selectedConsultingFor.name}` : "";
   document.getElementById("loRole").textContent = `${selectedLang.name}${forLabel}`;
-  const loT = document.getElementById("loTranscript");
-  if (loT) loT.innerHTML = "";
   _loThinkingEl = null; _loDoctorLiveMsgEl = null;
+  _loSyncHistory();
   _setLoCaption("");
   if (isPlayingAudio) {
     // Greeting is still speaking — defer mic/WS setup until audio finishes.
