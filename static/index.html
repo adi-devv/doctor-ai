@@ -1316,12 +1316,18 @@ body {
 }
 .lo-close-btn:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.65); }
 
+/* Centered content wrapper */
+.lo-body {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  max-width: 580px; width: 100%; margin: 0 auto;
+}
+
 /* Scrollable conversation transcript */
 .lo-transcript {
   flex: 1; overflow-y: auto;
-  padding: 22px 22px 8px;
+  padding: 22px 20px 8px;
   display: flex; flex-direction: column;
-  gap: 20px;
+  gap: 18px; position: relative;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.07) transparent;
 }
@@ -1381,39 +1387,39 @@ body {
   flex-shrink: 0; font-style: italic; letter-spacing: 0.1px;
 }
 
-/* Bottom bar: status indicator + end button */
+/* Bottom bar: status + end button, centered column */
 .lo-statusbar {
-  display: flex; align-items: center;
-  justify-content: space-between;
-  padding: 14px 24px 32px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px;
+  padding: 14px 24px 42px;
   border-top: 1px solid rgba(255,255,255,0.06);
   flex-shrink: 0;
 }
 .lo-status {
-  font-size: 12.5px; color: rgba(255,255,255,0.28);
-  display: flex; align-items: center; gap: 8px;
-  font-weight: 500; letter-spacing: 0.2px;
-  transition: color 0.3s;
+  font-size: 12px; color: rgba(255,255,255,0.28);
+  display: flex; align-items: center; gap: 7px;
+  font-weight: 500; letter-spacing: 0.3px;
+  transition: color 0.3s; text-align: center;
 }
 .lo-status::before {
   content: ''; width: 6px; height: 6px; border-radius: 50%;
   background: currentColor; flex-shrink: 0;
 }
-.lo-status.listening { color: rgba(255,140,100,0.9); }
-.lo-status.listening::before { animation: pulse 1.5s ease-in-out infinite; }
-.lo-status.speaking  { color: rgba(255,195,120,0.85); }
-.lo-status.speaking::before { animation: pulse 0.8s ease-in-out infinite; }
+.lo-status.listening { color: rgba(255,140,100,0.92); }
+.lo-status.listening::before { animation: pulse 1.4s ease-in-out infinite; }
+.lo-status.speaking  { color: rgba(255,195,120,0.88); }
+.lo-status.speaking::before { animation: pulse 0.75s ease-in-out infinite; }
 
 .lo-end-btn {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: rgba(181,42,33,0.85); border: none;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: #c0302a; border: none;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.18s, transform 0.18s;
-  box-shadow: 0 2px 12px rgba(181,42,33,0.3); flex-shrink: 0;
+  cursor: pointer; transition: background 0.18s, transform 0.15s;
+  box-shadow: 0 4px 20px rgba(192,48,42,0.4);
 }
-.lo-end-btn:hover { background: rgba(204,53,48,0.9); transform: scale(1.06); }
-.lo-end-btn:active { transform: scale(0.94); }
-.lo-end-btn svg { width: 18px; height: 18px; }
+.lo-end-btn:hover { background: #d43d37; transform: scale(1.07); }
+.lo-end-btn:active { transform: scale(0.93); }
+.lo-end-btn svg { width: 20px; height: 20px; }
 
 
 </style>
@@ -1582,16 +1588,18 @@ body {
       </svg>
     </button>
   </div>
-  <div class="lo-transcript" id="loTranscript"></div>
-  <div class="lo-live-caption" id="loCaption"></div>
-  <div class="lo-statusbar">
-    <div class="lo-status" id="loStatus">Connecting…</div>
-    <button class="lo-end-btn" onclick="endLiveMode()" aria-label="End call">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 12 19.79 19.79 0 0 1 1.19 3.47 2 2 0 0 1 3.16 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.14 9.18"/>
-        <line x1="23" y1="1" x2="1" y2="23"/>
-      </svg>
-    </button>
+  <div class="lo-body">
+    <div class="lo-transcript" id="loTranscript"></div>
+    <div class="lo-live-caption" id="loCaption"></div>
+    <div class="lo-statusbar">
+      <div class="lo-status" id="loStatus">Connecting…</div>
+      <button class="lo-end-btn" onclick="endLiveMode()" aria-label="End call">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.26 12 19.79 19.79 0 0 1 1.19 3.47 2 2 0 0 1 3.16 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.14 9.18"/>
+          <line x1="23" y1="1" x2="1" y2="23"/>
+        </svg>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -2407,6 +2415,7 @@ let _loThinkingEl = null;
 let _loDoctorLiveMsgEl = null;
 let _liveVadTimer = null;
 let _livePartialText = '';
+let _liveSpeechActive = false; // true only between START_SPEECH and END_SPEECH / turn start
 
 
 function _setLoStatus(text, cls) {
@@ -2525,19 +2534,16 @@ function _teardownLiveSTT() {
   if (liveWs) { try { liveWs.onclose = null; liveWs.onerror = null; liveWs.close(); } catch(e){} liveWs = null; }
 }
 
-// Resume listening after AI finishes — reuse the open WS if alive, else start fresh (handles mic setup too).
+// Resume listening after AI finishes — always open a fresh WS so Sarvam has clean VAD state.
 function _resumeLiveListening() {
   if (!liveMode || liveListening) return;
-  if (liveWs && liveWs.readyState === WebSocket.OPEN) {
-    liveSendingAudio = true;
-    liveListening = true;
-    state = 'recording';
-    _setLoStatus('Listening…', 'listening');
-    _setLoRing('listening');
-    _startOrbRaf();
-  } else {
-    startLiveSTT();
+  _liveSpeechActive = false;
+  clearTimeout(_liveVadTimer); _liveVadTimer = null; _livePartialText = '';
+  if (liveWs) {
+    const old = liveWs; liveWs = null;
+    try { old.onclose = null; old.onerror = null; old.close(); } catch(e) {}
   }
+  startLiveSTT();
 }
 
 function _openLiveWS() {
@@ -2566,12 +2572,14 @@ function _openLiveWS() {
     // Saaras VAD signal events
     if (msg.type === 'events' && msg.data?.signal_type) {
       if (msg.data.signal_type === 'START_SPEECH') {
+        _liveSpeechActive = true;
         _livePartialText = '';
         clearTimeout(_liveVadTimer); _liveVadTimer = null;
         _setLoStatus('Listening…', 'listening');
         _setLoRing('listening');
         _startOrbRaf();
       } else if (msg.data.signal_type === 'END_SPEECH') {
+        _liveSpeechActive = false;
         clearTimeout(_liveVadTimer); _liveVadTimer = null;
         liveSendingAudio = false;
         if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
@@ -2591,18 +2599,21 @@ function _openLiveWS() {
     if (!isFinal) {
       _livePartialText = transcript;
       _setLoCaption(transcript + '…');
-      // Silence fallback: if VAD never fires END_SPEECH, trigger after 2.5s of no new words
-      clearTimeout(_liveVadTimer);
-      _liveVadTimer = setTimeout(() => {
-        if (!liveListening || !_livePartialText) return;
-        clearTimeout(_liveVadTimer); _liveVadTimer = null;
-        liveSendingAudio = false;
-        liveListening = false;
-        if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
-        try { ws.send(JSON.stringify({ type: 'flush' })); } catch(_) {}
-        _setLoStatus('Processing…', '');
-        _runLiveChatTurn(_livePartialText, sessionToken);
-      }, 2500);
+      // Silence fallback: only when VAD confirmed speech started, after 2.5s of no new words
+      if (_liveSpeechActive) {
+        clearTimeout(_liveVadTimer);
+        _liveVadTimer = setTimeout(() => {
+          if (!liveListening || !_livePartialText || !_liveSpeechActive) return;
+          _liveSpeechActive = false;
+          clearTimeout(_liveVadTimer); _liveVadTimer = null;
+          liveSendingAudio = false;
+          liveListening = false;
+          if (liveWaveAnimId) { cancelAnimationFrame(liveWaveAnimId); liveWaveAnimId = null; }
+          try { ws.send(JSON.stringify({ type: 'flush' })); } catch(_) {}
+          _setLoStatus('Processing…', '');
+          _runLiveChatTurn(_livePartialText, sessionToken);
+        }, 2500);
+      }
       return;
     }
 
@@ -2658,7 +2669,7 @@ async function startLiveSTT() {
 async function _runLiveChatTurn(transcript, myToken) {
   if (myToken !== sessionToken) return;
   state = "streaming";
-  clearTimeout(_liveVadTimer); _liveVadTimer = null; _livePartialText = '';
+  clearTimeout(_liveVadTimer); _liveVadTimer = null; _livePartialText = ''; _liveSpeechActive = false;
   _setLoStatus("Thinking…", "");
   _setLoRing("thinking");
   _loAddMsg("user", transcript);
@@ -2690,7 +2701,6 @@ function _loSyncHistory() {
   const loT = document.getElementById("loTranscript");
   if (!loT) return;
   loT.innerHTML = "";
-  loT.style.position = "relative";
   const msgs = document.querySelectorAll("#convo .msg");
   let added = 0;
   msgs.forEach(m => {
@@ -2749,7 +2759,7 @@ function endLiveMode() {
   _setLoStatus("Connecting…", "");
   _setLoCaption("");
   _loThinkingEl = null; _loDoctorLiveMsgEl = null;
-  clearTimeout(_liveVadTimer); _liveVadTimer = null; _livePartialText = '';
+  clearTimeout(_liveVadTimer); _liveVadTimer = null; _livePartialText = ''; _liveSpeechActive = false;
 }
 
 const $ = id => document.getElementById(id);
