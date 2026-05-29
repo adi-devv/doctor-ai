@@ -9,6 +9,7 @@ WORKDIR /app
 COPY --chown=user ./requirements.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
+
 COPY --chown=user . /app
 
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:7860", "--worker-class", "gthread", "--threads", "4", "--workers", "1"]
