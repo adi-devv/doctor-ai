@@ -314,6 +314,7 @@ ENGLISH_PASSTHROUGH = re.compile(
 def translate(text, source_lang, target_lang):
     if source_lang == target_lang or not text.strip():
         return text
+    original_text = text
     placeholders = {}
     if target_lang != "en-IN":
         seen = set()
@@ -345,7 +346,7 @@ def translate(text, source_lang, target_lang):
         translated = r.json().get("translated_text", "")
     except Exception as e:
         log.warning(f"translate failed: {e}")
-        return text
+        return original_text
     for placeholder, word in placeholders.items():
         translated = translated.replace(placeholder, word)
     if target_lang == "hi-IN":
@@ -565,7 +566,7 @@ def tts_all(text, lang_code):
 # Greeting cache — pre-warm translate+TTS for all languages at startup
 # ────────────────────────────────────────────────────────────────────────────
 _GREETING_EN = "Hello, I'm VedicAI. What's bothering you today?"
-_SUPPORTED_LANGS = ["hi-IN", "en-IN", "bn-IN", "pa-IN", "gu-IN", "ta-IN", "te-IN", "kn-IN", "ml-IN"]
+_SUPPORTED_LANGS = ["hi-IN", "en-IN", "bn-IN", "pa-IN", "gu-IN", "ta-IN", "te-IN", "kn-IN", "ml-IN", "mr-IN"]
 _GREETING_CACHE: dict = {}  # lang_code -> {"text": str, "audios": list}
 _GREETING_CACHE_LOCK = threading.Lock()
 
